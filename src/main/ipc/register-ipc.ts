@@ -6,6 +6,7 @@ import type { SessionManager } from "../session/session-manager";
 import type { ProxyServer } from "../proxy/server";
 import { DEFAULT_PROXY_PORT } from "../../shared/defaults";
 import type { UpdateService } from "../update/update-service";
+import type { CaptureUpdatePayload } from "../../shared/types";
 
 export interface IpcDependencies {
   settingsStore: SettingsStore;
@@ -77,7 +78,12 @@ export function registerIpcHandlers(deps: IpcDependencies): () => void {
     deps.historyStore.clearAll();
     const win = deps.getMainWindow();
     if (win) {
-      win.webContents.send(IPC.CAPTURE_UPDATED, []);
+      const payload: CaptureUpdatePayload = {
+        sessions: [],
+        updatedSessionId: null,
+        updatedRequestId: null,
+      };
+      win.webContents.send(IPC.CAPTURE_UPDATED, payload);
     }
   });
 

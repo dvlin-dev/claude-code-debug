@@ -141,4 +141,56 @@ describe("registerIpcHandlers", () => {
       }),
     );
   });
+
+  it("broadcasts an empty structured capture payload when clearing data", async () => {
+    const { registerIpcHandlers } = await import(
+      "../../src/main/ipc/register-ipc"
+    );
+
+    const clearAll = vi.fn();
+
+    registerIpcHandlers({
+      settingsStore: {
+        getSettings: vi.fn().mockReturnValue({ targetUrl: "" }),
+        saveSettings: vi.fn(),
+      } as never,
+      historyStore: {
+        listSessions: vi.fn().mockReturnValue([]),
+        listRequests: vi.fn().mockReturnValue([]),
+        getRequest: vi.fn().mockReturnValue(null),
+        clearAll,
+        search: vi.fn().mockReturnValue({ sessions: [], requests: [] }),
+      } as never,
+      sessionManager: {} as never,
+      getProxy: () => null,
+      getMainWindow: () =>
+        ({
+          webContents: {
+            send: sendMock,
+          },
+        }) as never,
+      updateService: {
+        getState: vi.fn(),
+        checkForUpdates: vi.fn(),
+        downloadUpdate: vi.fn(),
+        quitAndInstall: vi.fn(),
+        subscribe: vi.fn(() => () => {}),
+      } as never,
+    });
+
+    const clearHandler = handleMock.mock.calls.find(
+      ([channel]) => channel === IPC.CLEAR_DATA,
+    )?.[1];
+
+    expect(clearHandler).toBeTypeOf("function");
+
+    clearHandler?.();
+
+    expect(clearAll).toHaveBeenCalled();
+    expect(sendMock).toHaveBeenCalledWith(IPC.CAPTURE_UPDATED, {
+      sessions: [],
+      updatedSessionId: null,
+      updatedRequestId: null,
+    });
+  });
 });

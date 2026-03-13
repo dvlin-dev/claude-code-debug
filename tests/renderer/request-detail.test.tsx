@@ -91,6 +91,70 @@ describe("parseClaudeResponse", () => {
     const body = JSON.stringify({ role: "user", content: [] });
     expect(parseClaudeResponse(body)).toBeNull();
   });
+
+  it("parses delta-only SSE without content_block_start", () => {
+    const body = [
+      'event: content_block_delta',
+      'data: {"type":"content_block_delta","delta":{"type":"text_delta","text":"Hello"}}',
+      "",
+      'event: content_block_delta',
+      'data: {"type":"content_block_delta","delta":{"type":"text_delta","text":" world"}}',
+      "",
+      'event: message_stop',
+      'data: {"type":"message_stop"}',
+      "",
+    ].join("\n");
+
+    const result = parseClaudeResponse(body);
+    expect(result).not.toBeNull();
+    expect(result!.role).toBe("assistant");
+    expect(result!.content).toHaveLength(1);
+    expect(result!.content[0]).toMatchObject({
+      type: "text",
+      text: "Hello world",
+    });
+  });
+
+  it("parses SSE deltas without index by falling back to block zero", () => {
+    const body = [
+      'event: content_block_delta',
+      'data: {"type":"content_block_delta","delta":{"type":"thinking_delta","thinking":"Plan"}}',
+      "",
+      'event: content_block_delta',
+      'data: {"type":"content_block_delta","delta":{"type":"thinking_delta","thinking":" more"}}',
+      "",
+      'event: message_stop',
+      'data: {"type":"message_stop"}',
+      "",
+    ].join("\n");
+
+    const result = parseClaudeResponse(body);
+    expect(result).not.toBeNull();
+    expect(result!.content).toHaveLength(1);
+    expect(result!.content[0]).toMatchObject({
+      type: "thinking",
+      text: "Plan more",
+    });
+  });
+
+  it("parses data-only SSE without explicit event lines", () => {
+    const body = [
+      'data: {"type":"content_block_delta","delta":{"type":"text_delta","text":"Hello"}}',
+      "",
+      'data: {"type":"content_block_delta","delta":{"type":"text_delta","text":" there"}}',
+      "",
+      'data: {"type":"message_stop"}',
+      "",
+    ].join("\n");
+
+    const result = parseClaudeResponse(body);
+    expect(result).not.toBeNull();
+    expect(result!.content).toHaveLength(1);
+    expect(result!.content[0]).toMatchObject({
+      type: "text",
+      text: "Hello there",
+    });
+  });
 });
 
 describe("ContentBlock", () => {

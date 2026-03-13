@@ -1,6 +1,11 @@
 import { contextBridge, ipcRenderer } from "electron";
 import { IPC } from "../shared/ipc-channels";
-import type { AppSettings, SessionSummary, RequestRecord } from "../shared/types";
+import type {
+  AppSettings,
+  CaptureUpdatePayload,
+  SessionSummary,
+  RequestRecord,
+} from "../shared/types";
 import type { UpdateState } from "../shared/update";
 
 export const electronAPI = {
@@ -46,9 +51,11 @@ export const electronAPI = {
   quitAndInstallUpdate: (): Promise<void> =>
     ipcRenderer.invoke(IPC.QUIT_AND_INSTALL_UPDATE),
 
-  onCaptureUpdated: (cb: (sessions: SessionSummary[]) => void): (() => void) => {
-    const handler = (_e: Electron.IpcRendererEvent, sessions: SessionSummary[]) =>
-      cb(sessions);
+  onCaptureUpdated: (cb: (payload: CaptureUpdatePayload) => void): (() => void) => {
+    const handler = (
+      _e: Electron.IpcRendererEvent,
+      payload: CaptureUpdatePayload,
+    ) => cb(payload);
     ipcRenderer.on(IPC.CAPTURE_UPDATED, handler);
     return () => ipcRenderer.removeListener(IPC.CAPTURE_UPDATED, handler);
   },

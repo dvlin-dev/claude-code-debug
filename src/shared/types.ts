@@ -27,3 +27,9 @@ export interface RequestRecord {
   requestSize: number;
   responseSize: number | null;
 }
+
+export interface CaptureUpdatePayload {
+  sessions: SessionSummary[];
+  updatedSessionId: string | null;
+  updatedRequestId: string | null;
+}

@@ -41,15 +41,12 @@ export interface ParsedClaudeResponse {
   stopReason: string | null;
 }
 
-export function parseClaudeResponse(
-  body: string | null,
-): ParsedClaudeResponse | null {
-  if (!body) return null;
+type ParsedClaudeContentBlock = { type: string; [key: string]: unknown };
+type SseEvent = Record<string, unknown>;
 
+function parseClaudeJsonResponse(body: string): ParsedClaudeResponse | null {
   try {
     const parsed = JSON.parse(body);
-
-    // Standard non-streaming response
     if (parsed.content && parsed.role === "assistant") {
       return {
         role: "assistant",
@@ -58,74 +55,163 @@ export function parseClaudeResponse(
         stopReason: parsed.stop_reason ?? null,
       };
     }
-
-    // SSE streaming: body is newline-separated events
-    // Look for content_block_delta and content_block_start events
-    if (typeof body === "string" && body.includes("event:")) {
-      const blocks: Array<{ type: string; [key: string]: unknown }> = [];
-      const blockMap = new Map<number, { type: string; [key: string]: unknown }>();
-
-      for (const line of body.split("\n")) {
-        if (!line.startsWith("data:")) continue;
-        try {
-          const event = JSON.parse(line.slice(5).trim());
-
-          if (event.type === "content_block_start" && event.content_block) {
-            blockMap.set(event.index, { ...event.content_block });
-          }
-
-          if (event.type === "content_block_delta" && event.delta) {
-            const existing = blockMap.get(event.index);
-            if (existing && event.delta.type === "text_delta") {
-              existing.text = ((existing.text as string) ?? "") + (event.delta.text ?? "");
-            } else if (existing && event.delta.type === "thinking_delta") {
-              existing.thinking = ((existing.thinking as string) ?? "") + (event.delta.thinking ?? "");
-            } else if (existing && event.delta.type === "input_json_delta") {
-              existing._rawInput = ((existing._rawInput as string) ?? "") + (event.delta.partial_json ?? "");
-            }
-          }
-
-          if (event.type === "message_start" && event.message?.content) {
-            for (const block of event.message.content) {
-              blocks.push(block);
-            }
-          }
-        } catch {
-          // skip non-JSON data lines
-        }
-      }
-
-      // Convert blockMap to array
-      for (const [, block] of [...blockMap.entries()].sort((a, b) => a[0] - b[0])) {
-        // Parse accumulated raw JSON input for tool_use blocks
-        if (block.type === "tool_use" && block._rawInput) {
-          try {
-            block.input = JSON.parse(block._rawInput as string);
-          } catch {
-            block.input = block._rawInput;
-          }
-          delete block._rawInput;
-        }
-        // Move thinking field to text for display
-        if (block.type === "thinking" && block.thinking) {
-          block.text = block.thinking;
-          delete block.thinking;
-        }
-        blocks.push(block);
-      }
-
-      if (blocks.length > 0) {
-        return {
-          role: "assistant",
-          content: blocks,
-          model: null,
-          stopReason: null,
-        };
-      }
-    }
-
     return null;
   } catch {
     return null;
   }
+}
+
+function getEventIndex(event: SseEvent): number {
+  return typeof event.index === "number" ? event.index : 0;
+}
+
+function createFallbackBlock(
+  delta: Record<string, unknown>,
+): ParsedClaudeContentBlock {
+  switch (delta.type) {
+    case "thinking_delta":
+      return { type: "thinking", thinking: "" };
+    case "input_json_delta":
+      return { type: "tool_use", _rawInput: "" };
+    case "text_delta":
+    default:
+      return { type: "text", text: "" };
+  }
+}
+
+function applyDeltaToBlock(
+  blockMap: Map<number, ParsedClaudeContentBlock>,
+  event: SseEvent,
+): void {
+  const delta =
+    event.delta && typeof event.delta === "object"
+      ? (event.delta as Record<string, unknown>)
+      : null;
+
+  if (!delta) {
+    return;
+  }
+
+  const index = getEventIndex(event);
+  const existing = blockMap.get(index) ?? createFallbackBlock(delta);
+  blockMap.set(index, existing);
+
+  if (delta.type === "text_delta") {
+    existing.text = ((existing.text as string) ?? "") + (delta.text ?? "");
+    return;
+  }
+
+  if (delta.type === "thinking_delta") {
+    existing.thinking =
+      ((existing.thinking as string) ?? "") + (delta.thinking ?? "");
+    return;
+  }
+
+  if (delta.type === "input_json_delta") {
+    existing._rawInput =
+      ((existing._rawInput as string) ?? "") + (delta.partial_json ?? "");
+  }
+}
+
+function normalizeBlocks(
+  blockMap: Map<number, ParsedClaudeContentBlock>,
+): ParsedClaudeContentBlock[] {
+  return [...blockMap.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map(([, block]) => {
+      const normalized = { ...block };
+
+      if (normalized.type === "tool_use" && normalized._rawInput) {
+        try {
+          normalized.input = JSON.parse(normalized._rawInput as string);
+        } catch {
+          normalized.input = normalized._rawInput;
+        }
+        delete normalized._rawInput;
+      }
+
+      if (normalized.type === "thinking" && normalized.thinking) {
+        normalized.text = normalized.thinking;
+        delete normalized.thinking;
+      }
+
+      return normalized;
+    });
+}
+
+function parseClaudeSseResponse(body: string): ParsedClaudeResponse | null {
+  const blockMap = new Map<number, ParsedClaudeContentBlock>();
+  let sawSseData = false;
+
+  for (const line of body.split("\n")) {
+    if (!line.startsWith("data:")) continue;
+    sawSseData = true;
+
+    let event: SseEvent;
+    try {
+      const parsed = JSON.parse(line.slice(5).trim());
+      if (!parsed || typeof parsed !== "object") {
+        continue;
+      }
+      event = parsed as SseEvent;
+    } catch {
+      continue;
+    }
+
+    if (event.type === "message_start") {
+      const message =
+        event.message && typeof event.message === "object"
+          ? (event.message as { content?: unknown })
+          : null;
+
+      if (Array.isArray(message?.content)) {
+        for (const [index, block] of message.content.entries()) {
+          if (block && typeof block === "object") {
+            blockMap.set(index, { ...(block as ParsedClaudeContentBlock) });
+          }
+        }
+      }
+
+      continue;
+    }
+
+    if (event.type === "content_block_start" && event.content_block) {
+      const contentBlock =
+        typeof event.content_block === "object"
+          ? { ...(event.content_block as ParsedClaudeContentBlock) }
+          : null;
+      if (contentBlock) {
+        blockMap.set(getEventIndex(event), contentBlock);
+      }
+      continue;
+    }
+
+    if (event.type === "content_block_delta") {
+      applyDeltaToBlock(blockMap, event);
+    }
+  }
+
+  if (!sawSseData) {
+    return null;
+  }
+
+  const content = normalizeBlocks(blockMap);
+  if (content.length === 0) {
+    return null;
+  }
+
+  return {
+    role: "assistant",
+    content,
+    model: null,
+    stopReason: null,
+  };
+}
+
+export function parseClaudeResponse(
+  body: string | null,
+): ParsedClaudeResponse | null {
+  if (!body) return null;
+
+  return parseClaudeJsonResponse(body) ?? parseClaudeSseResponse(body);
 }

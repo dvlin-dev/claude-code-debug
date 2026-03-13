@@ -1,4 +1,9 @@
-import type { AppSettings, SessionSummary, RequestRecord } from "../../../shared/types";
+import type {
+  AppSettings,
+  CaptureUpdatePayload,
+  SessionSummary,
+  RequestRecord,
+} from "../../../shared/types";
 import type { UpdateState } from "../../../shared/update";
 
 export interface ElectronAPI {
@@ -19,7 +24,7 @@ export interface ElectronAPI {
   checkForUpdates(): Promise<UpdateState>;
   downloadUpdate(): Promise<UpdateState>;
   quitAndInstallUpdate(): Promise<void>;
-  onCaptureUpdated(cb: (sessions: SessionSummary[]) => void): () => void;
+  onCaptureUpdated(cb: (payload: CaptureUpdatePayload) => void): () => void;
   onProxyError(cb: (error: string) => void): () => void;
   onUpdateStateChanged(cb: (state: UpdateState) => void): () => void;
 }
