@@ -9,6 +9,7 @@ import { registerIpcHandlers } from "./ipc/register-ipc";
 import { IPC } from "../shared/ipc-channels";
 import { DEFAULT_PROXY_PORT } from "../shared/defaults";
 import { createUpdateService } from "./update/update-service";
+import { migrateLegacyUserData } from "./store/user-data-migration";
 
 let mainWindow: BrowserWindow | null = null;
 let proxy: ProxyServer | null = null;
@@ -37,8 +38,15 @@ function createWindow(): void {
   }
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   const userDataPath = app.getPath("userData");
+  const appDataPath = app.getPath("appData");
+
+  await migrateLegacyUserData({
+    appDataPath,
+    currentUserDataPath: userDataPath,
+    legacyFolderName: "claude-code-debug",
+  });
 
   // Initialize stores
   const settingsStore = new SettingsStore(

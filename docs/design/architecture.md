@@ -1,4 +1,4 @@
-# Claude Code Debug — Architecture
+# Agent Trace — Architecture
 
 ## Overview
 
@@ -198,13 +198,13 @@ CREATE INDEX idx_requests_timestamp ON requests(timestamp DESC);
 CREATE INDEX idx_sessions_updated   ON sessions(updated_at DESC);
 ```
 
-Storage: `~/Library/Application Support/claude-code-debug/history.db` (macOS)
+Storage: `~/Library/Application Support/agent-trace/history.db` (macOS)
 
 ## UI Layout
 
 ```
 ┌──────────────────────────────────────────────────────────┐
-│  Claude Code Debug    http://127.0.0.1:8888  ● Listening │  ← StatusBar (drag region)
+│  Agent Trace          http://127.0.0.1:8888  ● Listening │  ← StatusBar (drag region)
 ├────────────┬─────────────────────────────────────────────┤
 │  Sessions  │  ConversationHeader                        │
 │            │  [title] [model] [Raw] [Inspector]         │

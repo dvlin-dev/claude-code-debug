@@ -152,7 +152,7 @@ preload 只做最薄的桥接，不承载业务逻辑。
 `electron-builder` 必须声明 GitHub publish 配置：
 
 - owner: `dvlin-dev`
-- repo: `claude-code-debug`
+- repo: `agent-trace`
 
 GitHub Actions 发布资产必须包含：
 

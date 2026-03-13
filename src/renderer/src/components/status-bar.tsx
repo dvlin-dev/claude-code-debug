@@ -22,7 +22,7 @@ export function StatusBar({ onSettingsClick }: StatusBarProps) {
 
   return (
     <div className="flex h-12 items-center justify-between border-b px-4 drag-region">
-      <span className="font-medium text-sm pl-16">Claude Code Debug</span>
+      <span className="font-medium text-sm pl-16">Agent Trace</span>
 
       <div className="flex items-center gap-3">
         {isListening && proxyAddress && (

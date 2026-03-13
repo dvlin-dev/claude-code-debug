@@ -87,7 +87,7 @@ describe("Package Configuration", () => {
   const pkg = readJSON("package.json") as Record<string, unknown>;
 
   it("has correct app metadata", () => {
-    expect(pkg.name).toBe("claude-code-debug");
+    expect(pkg.name).toBe("agent-trace");
     expect(pkg.type).toBe("module");
     expect(pkg.main).toBe("out/main/index.js");
   });

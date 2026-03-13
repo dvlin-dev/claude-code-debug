@@ -15,7 +15,7 @@ export function SetupPage() {
       <div className="flex flex-col items-center gap-8 text-center">
         <div className="space-y-2">
           <h1 className="text-3xl font-semibold tracking-tight">
-            Claude Code Debug
+            Agent Trace
           </h1>
           <p className="text-muted-foreground">
             Intercept and analyze Claude Code API conversations
