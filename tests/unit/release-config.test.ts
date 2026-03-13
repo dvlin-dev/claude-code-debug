@@ -48,6 +48,7 @@ describe("macOS release config", () => {
     await expect(read("scripts/release.sh")).resolves.toContain(
       "用法: ./scripts/release.sh <version>",
     );
+    await expect(read("scripts/release.sh")).resolves.toContain("pnpm rebuild:node");
     await expect(read("scripts/release.sh")).resolves.toContain("pnpm typecheck");
     await expect(read("scripts/release.sh")).resolves.toContain("pnpm test");
     await expect(read("build/entitlements.mac.plist")).resolves.toContain(
