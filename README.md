@@ -1,4 +1,4 @@
-# Claude Code Debug
+# Agent Trace
 
 [中文](./README.zh-CN.md)
 
@@ -35,7 +35,7 @@ Claude Code  ──▶  Proxy (localhost:8888)  ──▶  Anthropic API
 
 **Session Grouping** — Claude Code embeds a session UUID in `metadata.user_id` of every request (`user_<hash>_account__session_<uuid>`). The proxy extracts this UUID to group requests into conversations. For non-Claude-Code clients, it falls back to content-based matching (system prompt hash + message superset detection).
 
-**Storage** — All captured data is persisted to a local SQLite database (`~/Library/Application Support/claude-code-debug/history.db`). Auto-prunes after 2000 requests.
+**Storage** — All captured data is persisted to a local SQLite database (`~/Library/Application Support/agent-trace/history.db`). Auto-prunes after 2000 requests.
 
 **UI** — Electron + React app with a ChatGPT-style conversation view. Left sidebar shows sessions, right side shows the rendered conversation with an optional Inspector panel for raw request/response data.
 

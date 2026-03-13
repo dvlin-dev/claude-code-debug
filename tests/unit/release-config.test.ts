@@ -31,7 +31,7 @@ describe("macOS release config", () => {
 
     expect(config).toContain("icon: resources/icon.icns");
     expect(config).toContain(
-      "artifactName: Claude-Code-Debug-${version}-${arch}.${ext}",
+      "artifactName: Agent-Trace-${version}-${arch}.${ext}",
     );
     expect(config).toContain("hardenedRuntime: true");
     expect(config).toContain("gatekeeperAssess: false");
@@ -40,7 +40,7 @@ describe("macOS release config", () => {
     expect(config).toContain("publish:");
     expect(config).toContain("provider: github");
     expect(config).toContain("owner: dvlin-dev");
-    expect(config).toContain("repo: claude-code-debug");
+    expect(config).toContain("repo: agent-trace");
   });
 
   it("includes release helper scripts and signing entitlements", async () => {

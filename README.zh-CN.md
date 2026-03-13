@@ -1,4 +1,4 @@
-# Claude Code Debug
+# Agent Trace
 
 [English](./README.md)
 
@@ -35,7 +35,7 @@ Claude Code  ──▶  代理 (localhost:8888)  ──▶  Anthropic API
 
 **会话分组** —— Claude Code 在每个请求的 `metadata.user_id` 中嵌入了会话 UUID（`user_<hash>_account__session_<uuid>`）。代理提取这个 UUID 来将请求分组到对话中。对于非 Claude Code 客户端，降级到基于内容的匹配（system prompt 哈希 + 消息超集检测）。
 
-**存储** —— 所有捕获的数据持久化到本地 SQLite 数据库（`~/Library/Application Support/claude-code-debug/history.db`）。超过 2000 条请求自动清理最旧的记录。
+**存储** —— 所有捕获的数据持久化到本地 SQLite 数据库（`~/Library/Application Support/agent-trace/history.db`）。超过 2000 条请求自动清理最旧的记录。
 
 **UI** —— Electron + React 应用，采用类 ChatGPT 的对话视图。左侧边栏显示会话列表，右侧显示渲染后的对话流，可选的 Inspector 面板查看原始请求/响应数据。
 

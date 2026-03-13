@@ -1,5 +1,5 @@
 appId: com.claude-code-debug.app
-productName: Claude Code Debug
+productName: Agent Trace
 directories:
   output: dist
   buildResources: resources
@@ -10,7 +10,7 @@ asarUnpack:
   - "**/node_modules/better-sqlite3/**"
 mac:
   icon: resources/icon.icns
-  artifactName: Claude-Code-Debug-${version}-${arch}.${ext}
+  artifactName: Agent-Trace-${version}-${arch}.${ext}
   category: public.app-category.developer-tools
   hardenedRuntime: true
   gatekeeperAssess: false
@@ -25,8 +25,8 @@ win:
 linux:
   target:
     - AppImage
-artifactName: Claude-Code-Debug-${version}-${arch}.${ext}
+artifactName: Agent-Trace-${version}-${arch}.${ext}
 publish:
   provider: github
   owner: dvlin-dev
-  repo: claude-code-debug
+  repo: agent-trace

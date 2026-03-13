@@ -20,7 +20,7 @@ test.describe("First Run", () => {
     await window.waitForLoadState("domcontentloaded");
 
     // Should show the setup page with TARGET_URL input
-    const heading = window.locator("text=Claude Code Debug");
+    const heading = window.locator("text=Agent Trace");
     await expect(heading).toBeVisible({ timeout: 10000 });
 
     // Should have TARGET_URL input

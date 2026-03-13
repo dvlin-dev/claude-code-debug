@@ -37,8 +37,8 @@
 
 相关文件：
 
-- `/Users/lin/code/claude-code-debug/package.json`
-- `/Users/lin/code/claude-code-debug/electron-builder.yml`
+- `/Users/lin/code/agent-trace/package.json`
+- `/Users/lin/code/agent-trace/electron-builder.yml`
 
 ## 2. 参考 moryflow PC 应该抄什么
 
@@ -278,8 +278,8 @@
 
 当前项目：
 
-- `/Users/lin/code/claude-code-debug/package.json`
-- `/Users/lin/code/claude-code-debug/electron-builder.yml`
+- `/Users/lin/code/agent-trace/package.json`
+- `/Users/lin/code/agent-trace/electron-builder.yml`
 
 参考实现：
 

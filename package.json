@@ -1,5 +1,5 @@
 {
-  "name": "claude-code-debug",
+  "name": "agent-trace",
   "version": "0.1.6",
   "private": true,
   "type": "module",
