@@ -55,7 +55,7 @@ function CopyButton({ text }: { text: string }) {
 
   return (
     <button
-      className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+      className="p-1 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
       onClick={handleCopy}
       title="Copy to clipboard"
     >
@@ -83,7 +83,7 @@ export function MessageBlock({ message, rawMode }: MessageBlockProps) {
   if (rawMode) {
     return (
       <div className={cn(
-        "rounded-lg p-3 space-y-2 relative group",
+        "p-3 space-y-2 relative group",
         containerStyle,
       )}>
         <div className="flex items-center justify-between">
@@ -108,7 +108,7 @@ export function MessageBlock({ message, rawMode }: MessageBlockProps) {
 
   return (
     <div className={cn(
-      "rounded-lg p-3 space-y-2 relative group",
+      "p-3 space-y-2 relative group",
       containerStyle,
     )}>
       <div className="flex items-center justify-between">

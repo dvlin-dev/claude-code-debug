@@ -14,7 +14,7 @@ export function ProfileSwitcher() {
     : null;
 
   return (
-    <div className="flex items-center gap-2 rounded-md border border-border bg-muted/50 px-2.5 py-1.5 text-xs cursor-pointer hover:bg-muted">
+    <div className="flex items-center gap-2 border border-border bg-muted/50 px-2.5 py-1.5 text-xs cursor-pointer hover:bg-muted">
       <span
         className={`inline-block h-2 w-2 rounded-full shrink-0 ${isAnyRunning ? "bg-green-500" : "bg-muted-foreground/40"}`}
       />

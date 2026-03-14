@@ -87,7 +87,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
           <DialogTitle>Settings</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
-          <div className="space-y-3 rounded-lg border p-4">
+          <div className="space-y-3 border p-4">
             <div className="space-y-1">
               <div className="font-medium text-sm">Profile management</div>
               <p className="text-muted-foreground text-sm">
@@ -101,7 +101,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 {profiles.map((profile) => (
                   <div
                     key={profile.id}
-                    className="flex items-center gap-2 p-2 rounded-md border border-border"
+                    className="flex items-center gap-2 p-2 border border-border"
                   >
                     <div className={cn("h-2 w-2 rounded-full flex-shrink-0",
                       statuses[profile.id]?.isRunning ? "bg-emerald-500" : "bg-muted-foreground/30"
@@ -135,7 +135,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
               </div>
             )}
           </div>
-          <div className="space-y-3 rounded-lg border p-4">
+          <div className="space-y-3 border p-4">
             <div className="space-y-1">
               <div className="font-medium text-sm">Automatic updates</div>
               <div className="text-muted-foreground text-sm">

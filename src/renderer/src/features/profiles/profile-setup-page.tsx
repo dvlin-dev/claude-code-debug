@@ -131,15 +131,15 @@ export function ProfileSetupPage() {
 
           {/* Flow diagram */}
           <div className="flex items-center justify-center gap-2 mb-6 text-xs text-muted-foreground">
-            <span className="px-2 py-1 rounded border border-border bg-muted/50 font-mono text-[10px]">
+            <span className="px-2 py-1 border border-border bg-muted/50 font-mono text-[10px]">
               {provider.clientName}
             </span>
             <ChevronRight className="h-3 w-3 text-muted-foreground/50" />
-            <span className="px-2 py-1 rounded border border-violet-500/30 bg-violet-500/5 font-mono text-[10px] text-violet-400">
+            <span className="px-2 py-1 border border-violet-500/30 bg-violet-500/5 font-mono text-[10px] text-violet-400">
               Agent Trace
             </span>
             <ChevronRight className="h-3 w-3 text-muted-foreground/50" />
-            <span className="px-2 py-1 rounded border border-border bg-muted/50 font-mono text-[10px]">
+            <span className="px-2 py-1 border border-border bg-muted/50 font-mono text-[10px]">
               Upstream API
             </span>
           </div>
@@ -209,7 +209,7 @@ export function ProfileSetupPage() {
           </div>
 
           {/* Shell block */}
-          <div className="relative rounded-md border border-border bg-black/30 p-3 mb-6">
+          <div className="relative border border-border bg-black/30 p-3 mb-6">
             <div className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
               Configure your client
             </div>
@@ -217,7 +217,7 @@ export function ProfileSetupPage() {
               {exportCmd}
             </code>
             <button
-              className="absolute top-2.5 right-2.5 text-[10px] text-muted-foreground hover:text-foreground px-1.5 py-0.5 rounded"
+              className="absolute top-2.5 right-2.5 text-[10px] text-muted-foreground hover:text-foreground px-1.5 py-0.5"
               onClick={() => copyToClipboard(exportCmd, "export")}
             >
               {copied === "export" ? "Copied!" : "Copy"}
@@ -280,7 +280,7 @@ export function ProfileSetupPage() {
           <div className="h-1.5 w-1.5 rounded-full bg-muted-foreground/30" />
         </div>
 
-        <div className="mx-auto w-14 h-14 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-2xl mb-5 shadow-lg shadow-violet-500/20">
+        <div className="mx-auto w-14 h-14 bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-2xl mb-5 shadow-lg shadow-violet-500/20">
           🔍
         </div>
 
@@ -298,7 +298,7 @@ export function ProfileSetupPage() {
               key={card.id}
               onClick={() => handleSelectProvider(card.id)}
               className={cn(
-                "w-44 p-4 rounded-lg border text-left transition-all",
+                "w-44 p-4 border text-left transition-all",
                 selectedId === card.id
                   ? "border-violet-500 bg-violet-500/5 shadow-sm shadow-violet-500/10"
                   : "border-border hover:border-muted-foreground/30",

@@ -36,7 +36,7 @@ export function ConversationView({ timeline, rawMode }: ConversationViewProps) {
     <ScrollArea className="h-full">
       <div className="space-y-4 p-4 max-w-3xl mx-auto">
         {instructions.length > 0 && (
-          <div className="max-w-3xl mx-auto mb-4 p-3 rounded-lg bg-cyan-500/5 border border-cyan-500/10">
+          <div className="max-w-3xl mx-auto mb-4 p-3 bg-cyan-500/5 border border-cyan-500/10">
             <div className="text-[9px] font-bold uppercase tracking-wider text-cyan-600 dark:text-cyan-400 mb-1.5">
               System Instructions
             </div>

@@ -105,7 +105,7 @@ export function SessionSidebar({ onSettingsClick }: SessionSidebarProps) {
             <button
               key={tab.label}
               className={cn(
-                "rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
+                "px-2.5 py-1 text-xs font-medium transition-colors",
                 providerFilter === tab.value
                   ? "bg-accent text-accent-foreground"
                   : "text-muted-foreground hover:bg-muted hover:text-foreground",
@@ -148,14 +148,14 @@ export function SessionSidebar({ onSettingsClick }: SessionSidebarProps) {
       {/* Footer */}
       <div className="flex items-center justify-between border-t border-border p-2">
         <button
-          className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+          className="flex items-center gap-1 px-2 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
           onClick={onSettingsClick}
         >
           <Plus className="h-3.5 w-3.5" />
           New Profile
         </button>
         <button
-          className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+          className="flex items-center gap-1 px-2 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
           onClick={onSettingsClick}
         >
           <Settings className="h-3.5 w-3.5" />

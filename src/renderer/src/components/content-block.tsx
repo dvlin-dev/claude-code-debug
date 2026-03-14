@@ -45,7 +45,7 @@ export function ContentBlock({ block }: ContentBlockProps) {
     return (
       <div
         className={cn(
-          "rounded-md bg-fuchsia-50 dark:bg-fuchsia-950/30 border border-fuchsia-200 dark:border-fuchsia-800",
+          "bg-fuchsia-50 dark:bg-fuchsia-950/30 border border-fuchsia-200 dark:border-fuchsia-800",
           "cursor-pointer",
         )}
         onClick={() => setExpanded(!expanded)}
@@ -68,7 +68,7 @@ export function ContentBlock({ block }: ContentBlockProps) {
   if (block.type === "tool-call") {
     return (
       <div
-        className="rounded-md border-l-2 border-blue-500 bg-blue-50 dark:bg-blue-950/20 cursor-pointer"
+        className="border-l-2 border-blue-500 bg-blue-50 dark:bg-blue-950/20 cursor-pointer"
         onClick={() => setExpanded(!expanded)}
       >
         <div className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-blue-700 dark:text-blue-300">
@@ -102,7 +102,7 @@ export function ContentBlock({ block }: ContentBlockProps) {
     return (
       <div
         className={cn(
-          "rounded-md border-l-2 cursor-pointer",
+          "border-l-2 cursor-pointer",
           hasError
             ? "border-red-500 bg-red-50 dark:bg-red-950/20"
             : "border-green-500 bg-green-50 dark:bg-green-950/20",

@@ -76,7 +76,7 @@ export function InspectorPanel({
           <button
             key={id}
             className={cn(
-              "px-2 py-1 text-[11px] rounded-md whitespace-nowrap transition-colors",
+              "px-2 py-1 text-[11px] whitespace-nowrap transition-colors",
               activeTab === id
                 ? "bg-accent text-accent-foreground font-medium"
                 : "text-muted-foreground hover:text-foreground hover:bg-accent/50",
@@ -88,7 +88,7 @@ export function InspectorPanel({
         ))}
         <button
           className={cn(
-            "px-2 py-1 text-[11px] rounded-md whitespace-nowrap transition-colors",
+            "px-2 py-1 text-[11px] whitespace-nowrap transition-colors",
             activeTab === "requests"
               ? "bg-accent text-accent-foreground font-medium"
               : "text-muted-foreground hover:text-foreground hover:bg-accent/50",
@@ -171,13 +171,13 @@ function OverviewSection({
         {otherItems.map((item) => (
           <div
             key={item.label}
-            className="flex items-center justify-between gap-3 rounded-md border px-3 py-2 text-sm"
+            className="flex items-center justify-between gap-3 border px-3 py-2 text-sm"
           >
             <span className="text-muted-foreground">{item.label}</span>
             {item.label === "Status" ? (
               <span
                 className={cn(
-                  "font-medium rounded px-1.5 py-0.5 text-xs",
+                  "font-medium px-1.5 py-0.5 text-xs",
                   statusBadgeColor(item.value),
                 )}
               >
@@ -186,7 +186,7 @@ function OverviewSection({
             ) : item.label === "Provider" ? (
               <span
                 className={cn(
-                  "font-medium rounded px-1.5 py-0.5 text-xs",
+                  "font-medium px-1.5 py-0.5 text-xs",
                   providerBadgeColor(item.value),
                 )}
               >
@@ -202,7 +202,7 @@ function OverviewSection({
             {tokenItems.map((item) => (
               <div
                 key={item.label}
-                className="rounded-md border border-border bg-muted/30 p-2.5"
+                className="border border-border bg-muted/30 p-2.5"
               >
                 <div className="text-base font-bold font-mono tabular-nums">
                   {item.value}
@@ -252,7 +252,7 @@ function InspectorSectionView({
             {section.tools.length} tools
           </Badge>
           {section.tools.map((tool) => (
-            <div key={tool.name} className="rounded-md border px-3 py-2">
+            <div key={tool.name} className="border px-3 py-2">
               <div className="font-mono text-xs font-medium">{tool.name}</div>
               {tool.description ? (
                 <p className="mt-1 text-xs text-muted-foreground">

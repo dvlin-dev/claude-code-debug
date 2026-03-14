@@ -35,7 +35,7 @@ export function SessionItem({ session, isSelected, onClick }: SessionItemProps) 
   return (
     <button
       className={cn(
-        "w-full text-left px-3 py-2.5 rounded-md transition-colors duration-150",
+        "w-full text-left px-3 py-2.5 transition-colors duration-150",
         "hover:bg-accent",
         isSelected && "bg-accent",
       )}

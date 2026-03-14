@@ -84,7 +84,7 @@ export function ProfileForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 rounded-xl border p-5 text-left">
+    <form onSubmit={handleSubmit} className="space-y-4 border p-5 text-left">
       <div className="space-y-1">
         <h2 className="text-lg font-semibold">Connect provider</h2>
         <p className="text-sm text-muted-foreground">
@@ -106,7 +106,7 @@ export function ProfileForm({
         <Label htmlFor="profile-provider">Provider</Label>
         <select
           id="profile-provider"
-          className="flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-xs"
+          className="flex h-9 w-full border bg-transparent px-3 py-1 text-sm shadow-xs"
           value={providerId}
           onChange={(event) => setProviderId(event.target.value as ProviderId)}
         >
