@@ -158,65 +158,80 @@ export function createAppBootstrap(
         const requestBodyBuffer = await readRequestBody(request);
 
         try {
-          const abortController = new AbortController();
-          // Abort upstream only when the client disconnects during response streaming.
-          // Do NOT listen on request "close" — it fires after the request body is
-          // consumed, long before the response finishes streaming, causing a false abort.
-          response.on("close", () => {
-            if (!response.writableEnded) {
-              abortController.abort();
-            }
-          });
-
           const forwarded = await forwardRequest({
             upstreamBaseUrl: profile.upstreamBaseUrl,
             method: request.method ?? "GET",
             path: request.url ?? "/",
             headers: request.headers,
             body: requestBodyBuffer,
-            signal: abortController.signal,
           });
 
           response.writeHead(
             forwarded.statusCode,
             stripHopByHopHeaders(forwarded.headers),
           );
-          forwarded.response.pipe(response);
-          forwarded.response.on("error", () => {
+
+          // Single data path: forward each chunk to the client AND collect for capture.
+          const chunks: Buffer[] = [];
+
+          forwarded.response.on("data", (chunk: Buffer) => {
+            const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+            chunks.push(buf);
             if (!response.writableEnded) {
-              response.end();
+              response.write(buf);
             }
           });
 
+          // Clean up upstream if client disconnects during streaming.
+          response.on("close", () => {
+            if (!response.writableEnded) {
+              forwarded.response.destroy();
+            }
+          });
+
+          // Wait for the upstream response to finish.
+          await new Promise<void>((resolve, reject) => {
+            forwarded.response.on("end", resolve);
+            forwarded.response.on("error", reject);
+          });
+
+          // End client response FIRST — client is fully served at this point.
+          response.end();
+
+          // Then process capture in the background — errors here never affect the client.
           const requestHeaders = normalizeHeaders(request.headers);
           const responseHeaders = normalizeHeaders(forwarded.headers);
-          const responseBodyBuffer = await forwarded.bodyBuffer;
+          const responseBodyBuffer = Buffer.concat(chunks);
 
-          const capturedExchange: CapturedExchange = {
-            exchangeId: randomUUID(),
-            providerId: profile.providerId,
-            profileId: profile.id,
-            method: request.method ?? "GET",
-            path: request.url ?? "/",
-            requestHeaders,
-            requestBody: buildCapturedBody(requestBodyBuffer, requestHeaders),
-            responseHeaders,
-            responseBody: buildCapturedBody(responseBodyBuffer, responseHeaders),
-            statusCode: forwarded.statusCode,
-            startedAt: new Date(startedAtMs).toISOString(),
-            durationMs: Date.now() - startedAtMs,
-            requestSize: requestBodyBuffer.length,
-            responseSize: responseBodyBuffer.length,
-          };
+          try {
+            const capturedExchange: CapturedExchange = {
+              exchangeId: randomUUID(),
+              providerId: profile.providerId,
+              profileId: profile.id,
+              method: request.method ?? "GET",
+              path: request.url ?? "/",
+              requestHeaders,
+              requestBody: buildCapturedBody(requestBodyBuffer, requestHeaders),
+              responseHeaders,
+              responseBody: buildCapturedBody(responseBodyBuffer, responseHeaders),
+              statusCode: forwarded.statusCode,
+              startedAt: new Date(startedAtMs).toISOString(),
+              durationMs: Date.now() - startedAtMs,
+              requestSize: requestBodyBuffer.length,
+              responseSize: responseBodyBuffer.length,
+            };
 
-          const { sessionId } = capturePipeline.process(capturedExchange);
-          const updatedSession =
-            sessionQueryService.getSessionListItem(sessionId);
+            const { sessionId } = capturePipeline.process(capturedExchange);
+            const updatedSession =
+              sessionQueryService.getSessionListItem(sessionId);
 
-          deps.onTraceCaptured?.({
-            updatedSession,
-            updatedExchangeId: capturedExchange.exchangeId,
-          });
+            deps.onTraceCaptured?.({
+              updatedSession,
+              updatedExchangeId: capturedExchange.exchangeId,
+            });
+          } catch (captureError) {
+            console.warn("[capture] Processing failed:", captureError);
+          }
         } catch (error) {
           const message =
             error instanceof Error ? error.message : String(error);

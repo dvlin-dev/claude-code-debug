@@ -158,7 +158,7 @@ describe("multi-provider integration harness", () => {
       onRequest: async (activeProfile, req, res) => {
         const startedAt = new Date().toISOString();
         const bodyBuffer = await readRequestBody(req);
-        const response = await forwardRequest({
+        const forwarded = await forwardRequest({
           upstreamBaseUrl: activeProfile.upstreamBaseUrl,
           method: req.method ?? "GET",
           path: req.url ?? "/",
@@ -171,10 +171,23 @@ describe("multi-provider integration harness", () => {
           body: bodyBuffer,
         });
 
-        res.writeHead(response.statusCode, response.headers);
-        response.response.pipe(res);
-        const responseBody = await response.bodyBuffer;
+        res.writeHead(forwarded.statusCode, forwarded.headers);
 
+        const chunks: Buffer[] = [];
+        forwarded.response.on("data", (chunk: Buffer) => {
+          const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+          chunks.push(buf);
+          res.write(buf);
+        });
+
+        await new Promise<void>((resolve, reject) => {
+          forwarded.response.on("end", resolve);
+          forwarded.response.on("error", reject);
+        });
+
+        res.end();
+
+        const responseBody = Buffer.concat(chunks);
         const exchange: CapturedExchange = {
           exchangeId: crypto.randomUUID(),
           providerId: activeProfile.providerId,
@@ -194,18 +207,18 @@ describe("multi-provider integration harness", () => {
               : null,
           ),
           responseHeaders: Object.fromEntries(
-            Object.entries(response.headers)
+            Object.entries(forwarded.headers)
               .filter(([, value]) => value != null)
               .map(([key, value]) => [key, Array.isArray(value) ? value.join(", ") : String(value)]),
           ),
           responseBody: capturedBody(
             responseBody,
-            String(response.headers["content-type"] ?? "application/json"),
-            typeof response.headers["content-encoding"] === "string"
-              ? response.headers["content-encoding"]
+            String(forwarded.headers["content-type"] ?? "application/json"),
+            typeof forwarded.headers["content-encoding"] === "string"
+              ? forwarded.headers["content-encoding"]
               : null,
           ),
-          statusCode: response.statusCode,
+          statusCode: forwarded.statusCode,
           startedAt,
           durationMs: 1,
           requestSize: bodyBuffer.length,
@@ -279,7 +292,7 @@ describe("multi-provider integration harness", () => {
       onRequest: async (activeProfile, req, res) => {
         const startedAt = new Date().toISOString();
         const bodyBuffer = await readRequestBody(req);
-        const response = await forwardRequest({
+        const forwarded = await forwardRequest({
           upstreamBaseUrl: activeProfile.upstreamBaseUrl,
           method: req.method ?? "GET",
           path: req.url ?? "/",
@@ -292,10 +305,23 @@ describe("multi-provider integration harness", () => {
           body: bodyBuffer,
         });
 
-        res.writeHead(response.statusCode, response.headers);
-        response.response.pipe(res);
-        const responseBody = await response.bodyBuffer;
+        res.writeHead(forwarded.statusCode, forwarded.headers);
 
+        const chunks: Buffer[] = [];
+        forwarded.response.on("data", (chunk: Buffer) => {
+          const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+          chunks.push(buf);
+          res.write(buf);
+        });
+
+        await new Promise<void>((resolve, reject) => {
+          forwarded.response.on("end", resolve);
+          forwarded.response.on("error", reject);
+        });
+
+        res.end();
+
+        const responseBody = Buffer.concat(chunks);
         const exchange: CapturedExchange = {
           exchangeId: crypto.randomUUID(),
           providerId: activeProfile.providerId,
@@ -316,19 +342,19 @@ describe("multi-provider integration harness", () => {
                 : null,
           },
           responseHeaders: Object.fromEntries(
-            Object.entries(response.headers)
+            Object.entries(forwarded.headers)
               .filter(([, value]) => value != null)
               .map(([key, value]) => [key, Array.isArray(value) ? value.join(", ") : String(value)]),
           ),
           responseBody: {
             bytes: responseBody,
-            contentType: String(response.headers["content-type"] ?? "text/event-stream"),
+            contentType: String(forwarded.headers["content-type"] ?? "text/event-stream"),
             contentEncoding:
-              typeof response.headers["content-encoding"] === "string"
-                ? response.headers["content-encoding"]
+              typeof forwarded.headers["content-encoding"] === "string"
+                ? forwarded.headers["content-encoding"]
                 : null,
           },
-          statusCode: response.statusCode,
+          statusCode: forwarded.statusCode,
           startedAt,
           durationMs: 1,
           requestSize: bodyBuffer.length,
