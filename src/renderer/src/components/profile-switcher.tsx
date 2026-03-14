@@ -46,7 +46,7 @@ export function ProfileSwitcher() {
 
   return (
     <>
-      <div className="space-y-0.5">
+      <div className="space-y-1.5">
         {profiles.map((profile) => (
           <ProfileRow
             key={profile.id}
@@ -145,13 +145,13 @@ function ProfileRow({ profile, port, isRunning, onToggle, onEdit, onDelete }: Pr
 
   return (
     <div
-      className="group flex items-center gap-2 px-3 py-2 hover:bg-muted/50 transition-colors"
+      className="group flex items-center gap-2 px-3 py-2.5 border border-border bg-card hover:bg-muted/40 transition-colors"
       onMouseEnter={() => setRowHovered(true)}
       onMouseLeave={() => setRowHovered(false)}
     >
       <span
         className={cn(
-          "inline-block h-1.5 w-1.5 rounded-full shrink-0",
+          "inline-block h-2 w-2 rounded-full shrink-0",
           isRunning ? "bg-success shadow-[0_0_4px_rgba(52,211,153,0.4)]" : "bg-muted-foreground/30",
         )}
       />
@@ -172,21 +172,21 @@ function ProfileRow({ profile, port, isRunning, onToggle, onEdit, onDelete }: Pr
           onClick={(e) => { e.stopPropagation(); onEdit(); }}
           title="Edit profile"
         >
-          <Pencil className="h-2.5 w-2.5" />
+          <Pencil className="h-3 w-3" />
         </button>
         <button
           className="p-0.5 text-muted-foreground hover:text-red-400 transition-colors"
           onClick={(e) => { e.stopPropagation(); onDelete(); }}
           title="Delete profile"
         >
-          <Trash2 className="h-2.5 w-2.5" />
+          <Trash2 className="h-3 w-3" />
         </button>
       </span>
 
       <span className="text-xs font-mono text-muted-foreground shrink-0">:{port}</span>
       <button
         className={cn(
-          "text-xs px-1.5 py-0.5 border shrink-0 min-w-[50px] text-center transition-all",
+          "text-xs px-2 py-0.5 border shrink-0 min-w-[56px] text-center transition-all",
           isRunning
             ? hovered
               ? "text-destructive border-destructive/30 bg-destructive/10"

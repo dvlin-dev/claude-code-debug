@@ -22,39 +22,31 @@ export function StatusBar({ onSettingsClick }: StatusBarProps) {
     ? statuses[runningProfile.id]?.port ?? runningProfile.localPort
     : null;
 
-  const terminalPath = runningProfile
-    ? `>_${runningProfile.name.toLowerCase().replace(/\s+/g, "-")}@127.0.0.1:${primaryPort}`
-    : ">_idle";
-
   return (
-    <div className="flex h-8 items-center justify-between border-t px-4 text-[11px] shrink-0">
-      {/* Left: app name */}
-      <span className="font-medium text-muted-foreground">Agent Trace</span>
+    <div className="drag-region flex h-10 items-center justify-between border-b px-4 shrink-0">
+      <span className="pl-16 text-xs font-semibold">Agent Trace</span>
 
-      {/* Center: terminal-style path */}
-      <span className="font-mono text-muted-foreground/70">{terminalPath}</span>
-
-      {/* Right: status + tools */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2">
         {primaryPort ? (
-          <span className="flex items-center gap-1.5">
+          <span className="flex items-center gap-1.5 border border-border px-2 py-0.5 text-[11px] font-mono text-muted-foreground">
             <span className="inline-block h-1.5 w-1.5 rounded-full bg-success shadow-[0_0_4px_rgba(52,211,153,0.4)]" />
             <span className="uppercase tracking-wider font-medium text-success">Listening</span>
+            <span className="text-muted-foreground/70">:{primaryPort}</span>
           </span>
         ) : profiles.length > 0 ? (
-          <span className="flex items-center gap-1.5 text-muted-foreground">
+          <span className="flex items-center gap-1.5 border border-border px-2 py-0.5 text-[11px] font-mono text-muted-foreground">
             <span className="inline-block h-1.5 w-1.5 rounded-full bg-muted-foreground/30" />
             Stopped
           </span>
         ) : null}
 
-        <span className="h-3 w-px bg-border" />
+        <span className="h-4 w-px bg-border" />
 
-        <span className="text-muted-foreground">
+        <span className="text-[11px] text-muted-foreground">
           {sessions.length} sessions
         </span>
 
-        <span className="h-3 w-px bg-border" />
+        <span className="h-4 w-px bg-border" />
 
         <Button
           variant="ghost"
@@ -65,7 +57,7 @@ export function StatusBar({ onSettingsClick }: StatusBarProps) {
           <Settings className="h-3.5 w-3.5" />
         </Button>
         <button
-          className="px-1.5 py-0.5 text-xs font-mono text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+          className="border border-border px-1.5 py-0.5 text-xs font-mono text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
           onClick={toggleCommandPalette}
           title="Command palette"
         >

@@ -18,10 +18,7 @@ export function WorkspacePage() {
 
   return (
     <div className="flex h-screen flex-col">
-      {/* Minimal drag region for macOS traffic lights */}
-      <div className="drag-region h-8 shrink-0 border-b" />
-
-      {/* Main content area */}
+      <StatusBar onSettingsClick={() => setSettingsOpen(true)} />
       <div className="flex-1 overflow-hidden">
         <ResizablePanelGroup orientation="horizontal">
           <ResizablePanel defaultSize="25%" minSize="15%" maxSize="40%">
@@ -33,10 +30,6 @@ export function WorkspacePage() {
           </ResizablePanel>
         </ResizablePanelGroup>
       </div>
-
-      {/* Bottom status bar */}
-      <StatusBar onSettingsClick={() => setSettingsOpen(true)} />
-
       <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
       <CommandPalette />
     </div>

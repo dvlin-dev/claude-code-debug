@@ -35,7 +35,7 @@ export function SessionItem({ session, isSelected, onClick }: SessionItemProps) 
   return (
     <button
       className={cn(
-        "w-full text-left px-4 py-3 transition-colors duration-150",
+        "w-full text-left px-4 py-3 transition-colors duration-150 border-b border-border/50",
         "hover:bg-muted/50",
         isSelected && "bg-accent-brand-muted border-l-2 border-l-accent-brand",
         !isSelected && "border-l-2 border-l-transparent",
@@ -43,7 +43,7 @@ export function SessionItem({ session, isSelected, onClick }: SessionItemProps) 
       onClick={onClick}
     >
       <p className="text-sm font-medium truncate">{stripXmlTags(session.title)}</p>
-      <div className="flex items-center gap-2 mt-1">
+      <div className="flex items-center gap-1.5 mt-1.5">
         <Badge
           variant="secondary"
           className={cn(
