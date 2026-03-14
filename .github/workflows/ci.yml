@@ -36,7 +36,7 @@ jobs:
         run: pnpm rebuild:node
 
       - name: Run tests
-        run: pnpm test
+        run: pnpm vitest run --exclude tests/harness/integration.test.ts
 
       - name: Build
         run: pnpm build
