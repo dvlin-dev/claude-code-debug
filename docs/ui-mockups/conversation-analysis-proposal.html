@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Conversation Analysis — Alternative Proposal</title>
+<style>
+  :root {
+    --bg: #0f0f0f; --surface: #171717; --elevated: #1e1e1e; --hover: #262626;
+    --border: #2a2a2a; --border-s: #222; --text: #e5e5e5; --text2: #999; --text3: #666; --text4: #444;
+    --accent: #7c6bf5; --accent-s: rgba(124,107,245,0.12);
+    --green: #34d399; --green-s: rgba(52,211,153,0.12);
+    --blue: #60a5fa; --blue-s: rgba(96,165,250,0.12);
+    --orange: #fb923c; --orange-s: rgba(251,146,60,0.12);
+    --red: #f87171; --red-s: rgba(248,113,113,0.12);
+    --pink: #f472b6; --pink-s: rgba(244,114,182,0.12);
+    --cyan: #22d3ee; --cyan-s: rgba(34,211,238,0.12);
+    --yellow: #facc15; --yellow-s: rgba(250,204,21,0.12);
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background:#050505; color:var(--text); -webkit-font-smoothing:antialiased; line-height:1.6; }
+  code { font-family: 'SF Mono','Menlo','Consolas', monospace; font-size: 0.85em; background: var(--elevated); padding: 1px 5px; border-radius: 3px; }
+
+  .page { max-width:1440px; margin:0 auto; padding:60px 40px; }
+  h1 { font-size:36px; font-weight:700; letter-spacing:-0.03em; margin-bottom:8px; }
+  h1 span { color:var(--accent); }
+  .sub { color:var(--text2); font-size:16px; margin-bottom:60px; max-width:720px; }
+  h2 { font-size:22px; font-weight:600; margin:56px 0 6px; letter-spacing:-0.02em; }
+  h2 .t { display:inline-block; background:var(--accent-s); color:var(--accent); font-size:10px; font-weight:700; padding:2px 7px; border-radius:3px; margin-left:8px; vertical-align:middle; text-transform:uppercase; letter-spacing:0.06em; }
+  h3 { font-size:16px; font-weight:600; margin:28px 0 8px; color:var(--text); }
+  .desc { color:var(--text2); font-size:13px; margin-bottom:20px; max-width:720px; }
+  hr { border:none; border-top:1px solid var(--border); margin:48px 0; }
+  p { color:var(--text2); font-size:14px; margin-bottom:12px; max-width:720px; line-height:1.7; }
+  .highlight { color:var(--accent); font-weight:600; }
+  .warn { color:var(--orange); }
+  .good { color:var(--green); }
+
+  ul { color:var(--text2); font-size:14px; margin:0 0 16px 20px; max-width:720px; }
+  li { margin-bottom:6px; line-height:1.6; }
+  li strong { color:var(--text); font-weight:600; }
+
+  /* Comparison cards */
+  .compare { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin:20px 0 32px; }
+  .compare-card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:20px; }
+  .compare-card.problem { border-color: rgba(248,113,113,0.3); }
+  .compare-card.solution { border-color: rgba(52,211,153,0.3); }
+  .compare-card h4 { font-size:13px; font-weight:700; margin-bottom:10px; display:flex; align-items:center; gap:8px; }
+  .compare-card ul { font-size:12px; margin-left:16px; }
+  .compare-card li { margin-bottom:4px; }
+
+  /* Principle cards */
+  .principles { display:grid; grid-template-columns:repeat(3, 1fr); gap:12px; margin:20px 0 32px; }
+  .principle { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:16px; }
+  .principle-num { font-size:32px; font-weight:800; color:var(--accent); opacity:0.3; margin-bottom:4px; font-family:'SF Mono',monospace; }
+  .principle h4 { font-size:13px; font-weight:700; margin-bottom:6px; }
+  .principle p { font-size:11px; margin-bottom:0; }
+
+  /* Frame */
+  .frame { background:var(--bg); border:1px solid var(--border); border-radius:10px; overflow:hidden; box-shadow:0 20px 50px rgba(0,0,0,0.5); margin:20px 0 40px; }
+  .tb { height:36px; background:var(--surface); border-bottom:1px solid var(--border); display:flex; align-items:center; padding:0 14px; gap:7px; }
+  .d { width:11px; height:11px; border-radius:50%; } .d.r{background:#ff5f57;} .d.y{background:#febc2e;} .d.g{background:#28c840;}
+  .tb-t { flex:1; text-align:center; color:var(--text4); font-size:11px; font-weight:500; }
+
+  /* App layout */
+  .app { display:flex; height:680px; }
+
+  /* Sidebar */
+  .sb { width:260px; border-right:1px solid var(--border); display:flex; flex-direction:column; background:var(--surface); flex-shrink:0; }
+  .sb-h { padding:10px 12px 6px; }
+  .sb-search { display:flex; align-items:center; gap:5px; padding:6px 9px; border-radius:6px; background:var(--elevated); border:1px solid var(--border-s); margin-bottom:6px; }
+  .sb-search svg { width:13px; height:13px; color:var(--text4); flex-shrink:0; }
+  .sb-search span { flex:1; font-size:12px; color:var(--text4); }
+  .sl { flex:1; overflow-y:auto; padding:0 6px; }
+  .dg { font-size:9px; color:var(--text4); text-transform:uppercase; letter-spacing:0.1em; font-weight:700; padding:10px 8px 3px; }
+  .si { padding:8px 10px; border-radius:6px; cursor:pointer; margin-bottom:1px; }
+  .si:hover { background:var(--hover); }
+  .si.a { background:var(--accent-s); }
+  .si-t { font-size:12px; font-weight:500; margin-bottom:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .si-m { display:flex; align-items:center; gap:5px; font-size:10px; color:var(--text4); }
+  .pb { display:inline-flex; padding:1px 5px; border-radius:3px; font-size:9px; font-weight:600; letter-spacing:0.02em; }
+  .pb.an { background:var(--orange-s); color:var(--orange); }
+  .si-m .ml { margin-left:auto; }
+
+  /* Main */
+  .mn { flex:1; display:flex; flex-direction:column; background:var(--bg); min-width:0; }
+  .mn-h { height:44px; border-bottom:1px solid var(--border); display:flex; align-items:center; padding:0 16px; gap:8px; flex-shrink:0; }
+  .mn-t { font-size:13px; font-weight:600; flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; }
+  .hb { font-size:10px; padding:2px 7px; border-radius:4px; background:var(--elevated); color:var(--text2); border:1px solid var(--border); font-family:'SF Mono',monospace; }
+
+  /* Mode toggle */
+  .mode-toggle { display:flex; background:var(--elevated); border:1px solid var(--border); border-radius:6px; overflow:hidden; flex-shrink:0; }
+  .mode-btn { font-size:10px; padding:4px 10px; cursor:pointer; color:var(--text3); font-weight:500; transition:all 0.15s; border:none; background:none; }
+  .mode-btn.a { background:var(--accent-s); color:var(--accent); }
+  .mode-btn:hover:not(.a) { color:var(--text2); }
+
+  .hbtn { width:28px; height:28px; border-radius:5px; display:flex; align-items:center; justify-content:center; color:var(--text4); cursor:pointer; font-size:12px; border:1px solid transparent; flex-shrink:0; }
+  .hbtn:hover { background:var(--hover); color:var(--text2); }
+  .hbtn.a { background:var(--accent-s); color:var(--accent); border-color:rgba(124,107,245,0.2); }
+
+  .mn-b { display:flex; flex:1; overflow:hidden; }
+
+  /* Conversation view */
+  .cv { flex:1; overflow-y:auto; padding:20px 24px; }
+
+  /* Messages */
+  .msg { max-width:640px; margin:0 auto 12px; padding:12px 14px; border-radius:10px; }
+  .msg.u { background:var(--blue-s); border:1px solid rgba(96,165,250,0.12); }
+  .msg.as { background:var(--surface); border:1px solid var(--border); }
+  .msg.sys { background:var(--cyan-s); border:1px solid rgba(34,211,238,0.1); }
+  .mr { font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:5px; display:flex; align-items:center; gap:6px; }
+  .msg.u .mr { color:var(--blue); }
+  .msg.as .mr { color:var(--text4); }
+  .msg.sys .mr { color:var(--cyan); }
+  .mt { font-size:12.5px; line-height:1.7; color:var(--text); }
+
+  /* Context chip — 核心创新 */
+  .ctx-chip { max-width:640px; margin:0 auto 8px; display:flex; align-items:center; gap:6px; padding:6px 12px; border-radius:8px; background:var(--surface); border:1px solid var(--border); cursor:pointer; transition:all 0.2s; }
+  .ctx-chip:hover { border-color:var(--accent); background:var(--elevated); }
+  .ctx-chip-icon { font-size:11px; opacity:0.7; flex-shrink:0; }
+  .ctx-chip-label { font-size:11px; font-weight:500; color:var(--text2); flex:1; }
+  .ctx-chip-meta { font-size:10px; color:var(--text4); font-family:'SF Mono',monospace; display:flex; gap:8px; }
+  .ctx-chip-caret { color:var(--text4); font-size:9px; transition:transform 0.2s; }
+  .ctx-chip.open .ctx-chip-caret { transform:rotate(90deg); }
+  .ctx-chip.type-reminder { border-left:3px solid var(--cyan); }
+  .ctx-chip.type-hook { border-left:3px solid var(--yellow); }
+  .ctx-chip.type-context { border-left:3px solid var(--accent); }
+  .ctx-chip.type-skills { border-left:3px solid var(--green); }
+
+  /* Expanded context content */
+  .ctx-expanded { max-width:640px; margin:-4px auto 12px; padding:0 12px 12px; border-radius:0 0 8px 8px; background:var(--surface); border:1px solid var(--border); border-top:none; font-size:11px; color:var(--text3); font-family:'SF Mono',monospace; line-height:1.5; white-space:pre-wrap; max-height:200px; overflow-y:auto; }
+
+  /* Tool call blocks */
+  .tc-wrap { max-width:640px; margin:0 auto 8px; }
+  .tc { padding:9px 12px; border-radius:8px; background:var(--surface); border:1px solid var(--border); }
+  .tc.call { border-left:3px solid var(--accent); }
+  .tc.result { border-left:3px solid var(--green); }
+  .tc.error { border-left:3px solid var(--red); }
+  .tc-h { display:flex; align-items:center; gap:5px; }
+  .tc-icon { font-size:11px; }
+  .tc-n { font-size:11px; font-weight:600; font-family:'SF Mono',monospace; }
+  .tc.call .tc-n { color:var(--accent); }
+  .tc.result .tc-n { color:var(--green); }
+  .tc.error .tc-n { color:var(--red); }
+  .tc-s { margin-left:auto; font-size:9px; display:flex; align-items:center; gap:3px; color:var(--green); }
+  .tc-b { font-size:11px; color:var(--text2); font-family:'SF Mono',monospace; background:var(--bg); border-radius:4px; padding:6px 8px; margin-top:5px; white-space:pre; overflow-x:auto; }
+
+  /* Reasoning */
+  .rb { max-width:640px; margin:0 auto 8px; padding:8px 12px; border-radius:8px; background:var(--pink-s); border:1px solid rgba(244,114,182,0.12); cursor:pointer; }
+  .rb-h { display:flex; align-items:center; gap:5px; font-size:11px; color:var(--pink); font-weight:600; }
+  .rb-caret { font-size:9px; }
+  .rb-time { margin-left:auto; font-size:10px; color:rgba(244,114,182,0.6); font-weight:400; }
+
+  /* X-Ray mode specific */
+  .xray .ctx-chip { background:var(--elevated); border-color:var(--border); }
+  .xray .ctx-expanded { display:block; }
+
+  /* Context analysis panel */
+  .ctx-panel { width:320px; border-left:1px solid var(--border); display:flex; flex-direction:column; background:var(--surface); flex-shrink:0; overflow-y:auto; }
+  .ctx-panel-h { height:44px; border-bottom:1px solid var(--border); display:flex; align-items:center; padding:0 14px; gap:6px; flex-shrink:0; }
+  .ctx-panel-t { font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.06em; color:var(--text2); flex:1; }
+  .ctx-panel-body { padding:14px; overflow-y:auto; flex:1; }
+
+  /* Composition bar */
+  .comp-bar { height:24px; border-radius:6px; overflow:hidden; display:flex; margin-bottom:16px; }
+  .comp-seg { height:100%; transition:width 0.3s; }
+  .comp-legend { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:20px; }
+  .comp-item { display:flex; align-items:center; gap:4px; font-size:10px; color:var(--text3); }
+  .comp-dot { width:8px; height:8px; border-radius:2px; flex-shrink:0; }
+
+  /* Context breakdown list */
+  .ctx-list { margin-bottom:20px; }
+  .ctx-list-h { font-size:10px; font-weight:700; color:var(--text4); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:8px; }
+  .ctx-item { padding:8px 10px; background:var(--bg); border:1px solid var(--border-s); border-radius:6px; margin-bottom:4px; cursor:pointer; }
+  .ctx-item:hover { border-color:var(--accent); }
+  .ctx-item-h { display:flex; align-items:center; gap:6px; margin-bottom:3px; }
+  .ctx-item-icon { font-size:10px; }
+  .ctx-item-name { font-size:11px; font-weight:600; flex:1; }
+  .ctx-item-tokens { font-size:10px; color:var(--text4); font-family:'SF Mono',monospace; }
+  .ctx-item-preview { font-size:10px; color:var(--text4); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+  /* Stats row */
+  .stat-row { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:16px; }
+  .stat-card { background:var(--bg); border:1px solid var(--border-s); border-radius:6px; padding:10px; }
+  .stat-val { font-size:18px; font-weight:700; font-family:'SF Mono',monospace; }
+  .stat-label { font-size:9px; color:var(--text4); margin-top:2px; }
+
+  /* Architecture diagram */
+  .arch { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:24px; margin:20px 0 32px; font-family:'SF Mono',monospace; font-size:12px; color:var(--text2); line-height:1.8; white-space:pre; overflow-x:auto; }
+
+  /* Data model */
+  .code-block { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:20px; margin:16px 0 24px; font-family:'SF Mono',monospace; font-size:12px; color:var(--text2); line-height:1.6; white-space:pre; overflow-x:auto; }
+  .code-block .kw { color:var(--accent); }
+  .code-block .ty { color:var(--cyan); }
+  .code-block .cm { color:var(--text4); }
+  .code-block .st { color:var(--green); }
+
+  @media (max-width: 900px) {
+    .compare { grid-template-columns:1fr; }
+    .principles { grid-template-columns:1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+<h1>Conversation Analysis <span>Alternative Proposal</span></h1>
+<p class="sub">
+  对设计文档的重新思考。核心理念：不是"分类然后隐藏"，而是<strong style="color:var(--text)">"保留空间关系，调节透明度"</strong>。
+  一个视图解决所有问题，像 X 光片一样——同一张图，调节对比度就能看到不同的层。
+</p>
+
+<!-- ===== SECTION 1: REVIEW ===== -->
+<h2>一、对设计文档的 Review <span class="t">Critique</span></h2>
+
+<h3>设计文档做对了什么</h3>
+<ul>
+  <li><strong>"分类而不是删除"</strong> — 这个原则完全正确，原始数据不能丢</li>
+  <li><strong>分析师视角</strong> — 认识到这不只是聊天查看器，而是 AI 行为分析工具</li>
+  <li><strong>provider 差异意识</strong> — 正确区分了 Anthropic 快照 vs OpenAI 增量的差异</li>
+</ul>
+
+<h3>设计文档的问题</h3>
+
+<div class="compare">
+  <div class="compare-card problem">
+    <h4><span style="color:var(--red)">&#x2717;</span> 问题 1：过度工程化数据模型</h4>
+    <ul>
+      <li>新增 <code>TimelineMessageVM</code> 带 6 个新字段 (category, source, visibility, annotations...)</li>
+      <li>新增 <code>TimelineHiddenGroupVM</code> 联合类型</li>
+      <li>把展示逻辑的决策（visibility: hidden/primary/secondary）硬编码到数据层</li>
+      <li>Main process 不应该决定"什么该隐藏"——这是 UI 的事</li>
+    </ul>
+  </div>
+  <div class="compare-card problem">
+    <h4><span style="color:var(--red)">&#x2717;</span> 问题 2：正则分类器是脆弱的</h4>
+    <ul>
+      <li>classify-message.ts 用正则匹配 <code>&lt;system-reminder&gt;</code> 等模式</li>
+      <li>每个 AI 客户端的注入格式都不同，且随版本变化</li>
+      <li>永远在追着上游改——今天是 <code>&lt;system-reminder&gt;</code>，明天可能换格式</li>
+      <li>误判风险：用户真正输入了 <code>&lt;system-reminder&gt;</code> 会被错误分类</li>
+    </ul>
+  </div>
+  <div class="compare-card problem">
+    <h4><span style="color:var(--red)">&#x2717;</span> 问题 3：三个 Tab 破坏空间连续性</h4>
+    <ul>
+      <li>Conversation / Context / Raw 三个 tab 是三个独立视图</li>
+      <li>切换 tab 后，用户失去"这段注入在对话中的位置"的感知</li>
+      <li>对于"分析 AI 底层逻辑"的目标，空间位置恰恰是最重要的信息</li>
+      <li>"第 3 条 user message 前被注入了什么"——tab 切换后这个上下文就丢了</li>
+    </ul>
+  </div>
+  <div class="compare-card problem">
+    <h4><span style="color:var(--red)">&#x2717;</span> 问题 4：忽视已有结构</h4>
+    <ul>
+      <li>当前 <code>NormalizedExchange</code> 已经分离了 instructions / inputMessages / tools</li>
+      <li>问题不在数据模型，在于 timeline assembler 只是 <code>[...input, ...output]</code></li>
+      <li>以及 renderer 不区分 block 内容类型</li>
+      <li>解法应该是增强现有结构，而不是重建一套</li>
+    </ul>
+  </div>
+</div>
+
+<hr>
+
+<!-- ===== SECTION 2: MY APPROACH ===== -->
+<h2>二、我的方案：Layered Transparency <span class="t">Core Idea</span></h2>
+<p>
+  核心隐喻：<span class="highlight">X 光模式</span>。同一个视图，同一个空间位置。
+  不是把信息搬到不同的 tab 里，而是在原地调节"透明度"——
+  普通模式看到的是皮肤，X-Ray 模式看到的是骨骼，但它们的空间关系从未改变。
+</p>
+
+<div class="principles">
+  <div class="principle">
+    <div class="principle-num">01</div>
+    <h4>一个视图，两种密度</h4>
+    <p>不用 tab 切换。默认模式折叠注入内容为"上下文芯片"；X-Ray 模式在原位展开一切。Inspector 继续作为 Raw 层。</p>
+  </div>
+  <div class="principle">
+    <div class="principle-num">02</div>
+    <h4>Block 级注解，不是 Message 级分类</h4>
+    <p>一条 user message 里可能混着真实输入和 system-reminder。分类粒度应该在 block，不是整条 message。</p>
+  </div>
+  <div class="principle">
+    <div class="principle-num">03</div>
+    <h4>Renderer 决定展示，Main 只提供结构</h4>
+    <p>Main process 负责提取结构信息（这个 block 是文本/是 XML wrapper/是 instructions），Renderer 决定怎么画。</p>
+  </div>
+</div>
+
+<hr>
+
+<!-- ===== SECTION 3: DEFAULT MODE MOCKUP ===== -->
+<h2>三、默认模式 — Clean Conversation <span class="t">Default View</span></h2>
+<p class="desc">
+  注入内容不消失，而是折叠成带颜色编码的"上下文芯片"。芯片保留在对话流中原本的位置，
+  让用户始终感知到"这里有东西被注入了"。点击即可展开查看原文。
+</p>
+
+<div class="frame">
+  <div class="tb"><div class="d r"></div><div class="d y"></div><div class="d g"></div><div class="tb-t">Agent Trace — Anthropic Dev :8888</div></div>
+  <div class="app">
+
+    <!-- Sidebar -->
+    <div class="sb">
+      <div class="sb-h">
+        <div class="sb-search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <span>Search sessions…</span>
+        </div>
+      </div>
+      <div class="sl">
+        <div class="dg">Today</div>
+        <div class="si a">
+          <div class="si-t">请你阅读这个文档，了解我要做的事情</div>
+          <div class="si-m">
+            <span class="pb an">Anthropic</span>
+            <span>5 exch</span>
+            <span class="ml">2m</span>
+          </div>
+        </div>
+        <div class="si">
+          <div class="si-t">Fix authentication middleware</div>
+          <div class="si-m">
+            <span class="pb an">Anthropic</span>
+            <span>12 exch</span>
+            <span class="ml">1h</span>
+          </div>
+        </div>
+        <div class="si">
+          <div class="si-t">Refactor database layer</div>
+          <div class="si-m">
+            <span class="pb an">Anthropic</span>
+            <span>8 exch</span>
+            <span class="ml">3h</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main content -->
+    <div class="mn">
+      <div class="mn-h">
+        <div class="mn-t">请你阅读这个文档，了解我要做的事情</div>
+        <span class="hb">claude-opus-4-6</span>
+        <div style="flex:1"></div>
+
+        <!-- Mode toggle — 核心交互 -->
+        <div class="mode-toggle">
+          <div class="mode-btn a">Clean</div>
+          <div class="mode-btn">X-Ray</div>
+        </div>
+
+        <div class="hbtn" title="Context Analysis">📊</div>
+        <div class="hbtn" title="Inspector">☰</div>
+      </div>
+      <div class="mn-b">
+        <div class="cv">
+
+          <!-- 折叠的 System Instructions -->
+          <div class="ctx-chip type-context">
+            <span class="ctx-chip-icon">📋</span>
+            <span class="ctx-chip-label">System Instructions</span>
+            <span class="ctx-chip-meta">
+              <span>~12,800 tokens</span>
+              <span>68% of input</span>
+            </span>
+            <span class="ctx-chip-caret">▶</span>
+          </div>
+
+          <!-- 折叠的 Hook 输出 (在第一条 user message 之前) -->
+          <div class="ctx-chip type-hook">
+            <span class="ctx-chip-icon">⚡</span>
+            <span class="ctx-chip-label">Startup hook output</span>
+            <span class="ctx-chip-meta"><span>SessionStart:success</span></span>
+            <span class="ctx-chip-caret">▶</span>
+          </div>
+
+          <!-- 折叠的 System Reminder (混在 user message 中的注入) -->
+          <div class="ctx-chip type-reminder">
+            <span class="ctx-chip-icon">🔖</span>
+            <span class="ctx-chip-label">System reminder · CLAUDE.md context</span>
+            <span class="ctx-chip-meta">
+              <span>~4,200 chars</span>
+            </span>
+            <span class="ctx-chip-caret">▶</span>
+          </div>
+
+          <!-- 折叠的 Skills 列表 -->
+          <div class="ctx-chip type-skills">
+            <span class="ctx-chip-icon">🧩</span>
+            <span class="ctx-chip-label">Available skills</span>
+            <span class="ctx-chip-meta"><span>47 skills</span></span>
+            <span class="ctx-chip-caret">▶</span>
+          </div>
+
+          <!-- 真正的用户消息 — 这才是主角 -->
+          <div class="msg u">
+            <div class="mr">USER</div>
+            <div class="mt">请你阅读这个文档，了解我要做的事情。他这个思路并不一定是对的，我的目的是为了更好地根据现在已有的数据结构，分析 AI 的底层逻辑是怎么设计的。</div>
+          </div>
+
+          <!-- Reasoning 折叠 -->
+          <div class="rb">
+            <div class="rb-h">
+              <span class="rb-caret">▶</span>
+              💭 Thinking
+              <span class="rb-time">4.1s · 1,200 tokens</span>
+            </div>
+          </div>
+
+          <!-- Tool calls -->
+          <div class="tc-wrap">
+            <div class="tc call">
+              <div class="tc-h">
+                <span class="tc-icon" style="color:var(--accent)">⚡</span>
+                <span class="tc-n">Read</span>
+                <span class="tc-s">✓ 0.1s</span>
+              </div>
+              <div class="tc-b">docs/plans/2026-03-14-conversation-analysis-view-design.md</div>
+            </div>
+          </div>
+          <div class="tc-wrap">
+            <div class="tc result">
+              <div class="tc-h">
+                <span class="tc-icon" style="color:var(--green)">↩</span>
+                <span class="tc-n">Result</span>
+                <span class="tc-s">507 lines</span>
+              </div>
+              <div class="tc-b" style="max-height:40px;overflow:hidden;color:var(--text4);"># Conversation Analysis View Design
+> 状态: **待实现**…</div>
+            </div>
+          </div>
+
+          <!-- Assistant 回复 -->
+          <div class="msg as">
+            <div class="mr">ASSISTANT</div>
+            <div class="mt">是的，我能看到这个文件。这是一份非常详细的 <strong>Conversation Analysis View</strong> 设计文档，共 10 个章节…</div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<hr>
+
+<!-- ===== SECTION 4: X-RAY MODE ===== -->
+<h2>四、X-Ray 模式 — 底层全透明 <span class="t">X-Ray View</span></h2>
+<p class="desc">
+  同一个视图，同一个位置。切换到 X-Ray 后，上下文芯片在原位展开，
+  用颜色编码区分不同注入类型。空间关系完全保留——你能精确看到"在你说这句话之前，AI 客户端塞了什么"。
+</p>
+
+<div class="frame">
+  <div class="tb"><div class="d r"></div><div class="d y"></div><div class="d g"></div><div class="tb-t">Agent Trace — X-Ray Mode Active</div></div>
+  <div class="app" style="height:720px;">
+
+    <div class="sb">
+      <div class="sb-h">
+        <div class="sb-search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <span>Search sessions…</span>
+        </div>
+      </div>
+      <div class="sl">
+        <div class="dg">Today</div>
+        <div class="si a">
+          <div class="si-t">请你阅读这个文档，了解我要做的事情</div>
+          <div class="si-m"><span class="pb an">Anthropic</span><span>5 exch</span><span class="ml">2m</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mn">
+      <div class="mn-h">
+        <div class="mn-t">请你阅读这个文档，了解我要做的事情</div>
+        <span class="hb">claude-opus-4-6</span>
+        <div style="flex:1"></div>
+        <div class="mode-toggle">
+          <div class="mode-btn">Clean</div>
+          <div class="mode-btn a">X-Ray</div>
+        </div>
+        <div class="hbtn a" title="Context Analysis">📊</div>
+        <div class="hbtn" title="Inspector">☰</div>
+      </div>
+      <div class="mn-b">
+        <div class="cv" style="flex:1;">
+
+          <!-- System Instructions — 展开状态 -->
+          <div class="ctx-chip type-context open">
+            <span class="ctx-chip-icon">📋</span>
+            <span class="ctx-chip-label">System Instructions</span>
+            <span class="ctx-chip-meta"><span>~12,800 tokens</span><span>68% of input</span></span>
+            <span class="ctx-chip-caret">▶</span>
+          </div>
+          <div class="ctx-expanded" style="border-left:3px solid var(--accent); max-height:120px;">You are Claude Code, Anthropic's official CLI for Claude.
+You are an interactive agent that helps users with
+software engineering tasks. Use the instructions below
+and the tools available to you to assist the user.
+
+IMPORTANT: Assist with authorized security testing…
+# System
+- All text you output outside of tool use is displayed…
+…</div>
+
+          <!-- Hook output — 展开 -->
+          <div class="ctx-chip type-hook open">
+            <span class="ctx-chip-icon">⚡</span>
+            <span class="ctx-chip-label">Startup hook output</span>
+            <span class="ctx-chip-meta"><span>SessionStart:success</span></span>
+            <span class="ctx-chip-caret">▶</span>
+          </div>
+          <div class="ctx-expanded" style="border-left:3px solid var(--yellow); max-height:60px;">&lt;user-prompt-submit-hook&gt;
+SessionStart:startup hook success
+&lt;/user-prompt-submit-hook&gt;</div>
+
+          <!-- System Reminder — 展开 -->
+          <div class="ctx-chip type-reminder open">
+            <span class="ctx-chip-icon">🔖</span>
+            <span class="ctx-chip-label">System reminder · CLAUDE.md context</span>
+            <span class="ctx-chip-meta"><span>~4,200 chars</span></span>
+            <span class="ctx-chip-caret">▶</span>
+          </div>
+          <div class="ctx-expanded" style="border-left:3px solid var(--cyan); max-height:100px;">&lt;system-reminder&gt;
+As you answer the user's questions, you can use the
+following context:
+# claudeMd
+Codebase and user instructions are shown below…
+
+Contents of /Users/bowling/code/me/agent-trace/CLAUDE.md:
+# CLAUDE.md
+This file provides guidance to Claude Code when working
+with code in this repository.
+…
+&lt;/system-reminder&gt;</div>
+
+          <!-- Skills — 展开 -->
+          <div class="ctx-chip type-skills open">
+            <span class="ctx-chip-icon">🧩</span>
+            <span class="ctx-chip-label">Available skills</span>
+            <span class="ctx-chip-meta"><span>47 skills</span></span>
+            <span class="ctx-chip-caret">▶</span>
+          </div>
+          <div class="ctx-expanded" style="border-left:3px solid var(--green); max-height:80px;">&lt;system-reminder&gt;
+The following skills are available for use:
+- keybindings-help: Use when the user wants to customize…
+- simplify: Review changed code for reuse, quality…
+- loop: Run a prompt or slash command on a recurring…
+- claude-api: Build apps with the Claude API…
+…47 skills total
+&lt;/system-reminder&gt;</div>
+
+          <!-- 真正的用户消息 -->
+          <div class="msg u">
+            <div class="mr">USER</div>
+            <div class="mt">请你阅读这个文档，了解我要做的事情。他这个思路并不一定是对的，我的目的是为了更好地根据现在已有的数据结构，分析 AI 的底层逻辑是怎么设计的。</div>
+          </div>
+
+          <!-- Reasoning -->
+          <div class="rb">
+            <div class="rb-h">
+              <span class="rb-caret">▶</span> 💭 Thinking
+              <span class="rb-time">4.1s · 1,200 tokens</span>
+            </div>
+          </div>
+
+          <!-- Tool call -->
+          <div class="tc-wrap">
+            <div class="tc call">
+              <div class="tc-h">
+                <span class="tc-icon" style="color:var(--accent)">⚡</span>
+                <span class="tc-n">Read</span>
+                <span class="tc-s">✓ 0.1s</span>
+              </div>
+              <div class="tc-b">docs/plans/2026-03-14-conversation-analysis-view-design.md</div>
+            </div>
+          </div>
+
+          <!-- Assistant 回复 -->
+          <div class="msg as">
+            <div class="mr">ASSISTANT</div>
+            <div class="mt">是的，我能看到这个文件。这是一份非常详细的 <strong>Conversation Analysis View</strong> 设计文档…</div>
+          </div>
+
+        </div>
+
+        <!-- Context Analysis Panel (右侧) -->
+        <div class="ctx-panel">
+          <div class="ctx-panel-h">
+            <div class="ctx-panel-t">Context Analysis</div>
+            <div class="hbtn" style="font-size:11px;">✕</div>
+          </div>
+          <div class="ctx-panel-body">
+
+            <!-- Token composition bar -->
+            <div style="font-size:10px;font-weight:700;color:var(--text4);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">Token Composition</div>
+            <div class="comp-bar">
+              <div class="comp-seg" style="width:52%;background:var(--accent);opacity:0.7;"></div>
+              <div class="comp-seg" style="width:22%;background:var(--cyan);opacity:0.7;"></div>
+              <div class="comp-seg" style="width:12%;background:var(--green);opacity:0.7;"></div>
+              <div class="comp-seg" style="width:4%;background:var(--yellow);opacity:0.7;"></div>
+              <div class="comp-seg" style="width:10%;background:var(--blue);opacity:0.7;"></div>
+            </div>
+            <div class="comp-legend">
+              <div class="comp-item"><div class="comp-dot" style="background:var(--accent)"></div> Instructions 52%</div>
+              <div class="comp-item"><div class="comp-dot" style="background:var(--cyan)"></div> Reminders 22%</div>
+              <div class="comp-item"><div class="comp-dot" style="background:var(--green)"></div> Skills 12%</div>
+              <div class="comp-item"><div class="comp-dot" style="background:var(--yellow)"></div> Hooks 4%</div>
+              <div class="comp-item"><div class="comp-dot" style="background:var(--blue)"></div> User input 10%</div>
+            </div>
+
+            <!-- Stats -->
+            <div class="stat-row">
+              <div class="stat-card">
+                <div class="stat-val" style="color:var(--blue)">18,847</div>
+                <div class="stat-label">Input tokens</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-val" style="color:var(--green)">1,203</div>
+                <div class="stat-label">Output tokens</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-val" style="color:var(--pink)">1,200</div>
+                <div class="stat-label">Reasoning tokens</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-val" style="color:var(--text3)">90%</div>
+                <div class="stat-label">Overhead ratio</div>
+              </div>
+            </div>
+
+            <!-- Context breakdown -->
+            <div class="ctx-list">
+              <div class="ctx-list-h">Injected Context</div>
+              <div class="ctx-item">
+                <div class="ctx-item-h">
+                  <span class="ctx-item-icon">📋</span>
+                  <span class="ctx-item-name">System Instructions</span>
+                  <span class="ctx-item-tokens">~9,800 tk</span>
+                </div>
+                <div class="ctx-item-preview">You are Claude Code, Anthropic's official CLI…</div>
+              </div>
+              <div class="ctx-item">
+                <div class="ctx-item-h">
+                  <span class="ctx-item-icon">🔖</span>
+                  <span class="ctx-item-name">CLAUDE.md (project)</span>
+                  <span class="ctx-item-tokens">~4,200 tk</span>
+                </div>
+                <div class="ctx-item-preview">This file provides guidance to Claude Code…</div>
+              </div>
+              <div class="ctx-item">
+                <div class="ctx-item-h">
+                  <span class="ctx-item-icon">🔖</span>
+                  <span class="ctx-item-name">CLAUDE.md (root)</span>
+                  <span class="ctx-item-tokens">~3,100 tk</span>
+                </div>
+                <div class="ctx-item-preview">Spec-Flow Workflow Kit: Slash commands…</div>
+              </div>
+              <div class="ctx-item">
+                <div class="ctx-item-h">
+                  <span class="ctx-item-icon">🧩</span>
+                  <span class="ctx-item-name">Skills list</span>
+                  <span class="ctx-item-tokens">~1,500 tk</span>
+                </div>
+                <div class="ctx-item-preview">47 available skills: keybindings-help, simplify…</div>
+              </div>
+              <div class="ctx-item">
+                <div class="ctx-item-h">
+                  <span class="ctx-item-icon">⚡</span>
+                  <span class="ctx-item-name">Hook outputs</span>
+                  <span class="ctx-item-tokens">~200 tk</span>
+                </div>
+                <div class="ctx-item-preview">SessionStart:startup hook success</div>
+              </div>
+            </div>
+
+            <div class="ctx-list">
+              <div class="ctx-list-h">Observations</div>
+              <div style="font-size:11px;color:var(--text3);padding:8px 10px;background:var(--bg);border:1px solid var(--border-s);border-radius:6px;line-height:1.6;">
+                <div style="margin-bottom:6px;">
+                  <span style="color:var(--orange);">90% overhead</span> — Only 10% of input tokens are actual user conversation. The rest is framework context.
+                </div>
+                <div style="margin-bottom:6px;">
+                  <span style="color:var(--cyan);">Snapshot mode</span> — Anthropic sends full conversation history in every request (not incremental).
+                </div>
+                <div>
+                  <span style="color:var(--accent);">2 CLAUDE.md files</span> — Both root and project-level configs are injected as system reminders.
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<hr>
+
+<!-- ===== SECTION 5: ARCHITECTURE ===== -->
+<h2>五、实现策略 <span class="t">Architecture</span></h2>
+
+<h3>5.1 数据模型变更 — 最小化</h3>
+<p>不重建数据模型。只做两个小扩展：</p>
+
+<div class="code-block"><span class="cm">// 1. 给 NormalizedMessageBlock 加一个可选的 meta 字段</span>
+<span class="cm">//    注解内容由 timeline assembler 填充</span>
+<span class="kw">type</span> <span class="ty">BlockMeta</span> = {
+  <span class="cm">/** 这个 block 是否是客户端框架注入的（非用户原始输入） */</span>
+  injected?: <span class="ty">boolean</span>;
+  <span class="cm">/** 注入类型标识（用于 renderer 着色和分组） */</span>
+  contextType?: <span class="st">'system-instructions'</span> | <span class="st">'system-reminder'</span>
+    | <span class="st">'hook-output'</span> | <span class="st">'skills-list'</span> | <span class="st">'meta-prompt'</span>;
+  <span class="cm">/** 预估字符数（用于 UI 展示，不需要精确 token 计数） */</span>
+  charCount?: <span class="ty">number</span>;
+};
+
+<span class="cm">// 2. 给 SessionTimeline 加 context summary</span>
+<span class="kw">interface</span> <span class="ty">SessionTimeline</span> {
+  messages: <span class="ty">NormalizedMessage</span>[];
+  <span class="cm">/** 可选的上下文摘要，由 timeline assembler 填充 */</span>
+  contextSummary?: {
+    instructionChars: <span class="ty">number</span>;
+    reminderChars: <span class="ty">number</span>;
+    toolCount: <span class="ty">number</span>;
+    injectedBlockCount: <span class="ty">number</span>;
+  };
+}</div>
+
+<p>就这些。不新增 VM 类型，不新增 visibility/category/source 字段。</p>
+
+<h3>5.2 改造路径</h3>
+
+<div class="arch">Phase 1: Block-level annotation (Main process)
+├── <span style="color:var(--cyan)">derive-title.ts</span> 已有的 NOISE_PATTERNS → 复用
+├── <span style="color:var(--accent)">timeline-assembler.ts</span> (Anthropic)
+│   └── 遍历 inputMessages，对每个 text block：
+│       ├── 检测 &lt;system-reminder&gt; wrapper → meta.injected = true
+│       ├── 检测 hook output patterns → meta.contextType = 'hook-output'
+│       └── 其余保持不变
+├── <span style="color:var(--green)">timeline-assembler.ts</span> (OpenAI)
+│   └── 同理，但 OpenAI 的注入模式不同（developer message 等）
+└── contextSummary 在 build() 末尾统计
+
+Phase 2: Smart renderer (Renderer)
+├── <span style="color:var(--blue)">conversation-view.tsx</span>
+│   ├── 新增 viewMode state: 'clean' | 'xray'
+│   ├── 遍历 messages 时，根据 block.meta.injected 决定渲染方式
+│   │   ├── clean mode: 渲染为 ContextChip（折叠）
+│   │   └── xray mode: 渲染为 ContextChip（展开）+ 原文
+│   └── 相邻的 injected blocks 自动合并为一个 chip
+├── <span style="color:var(--pink)">context-chip.tsx</span> (新)
+│   └── 折叠/展开的上下文指示器
+└── <span style="color:var(--orange)">context-panel.tsx</span> (新)
+    └── 右侧分析面板：token 组成、注入清单、洞察
+
+Phase 3: Context analysis panel (Renderer)
+├── Token composition 柱状图
+├── Injected context 列表（可点击跳转到对话中的位置）
+└── 自动生成 observations（overhead ratio 等）
+
+Phase 4: 回归验证
+└── 同设计文档，基于真实历史数据验证</div>
+
+<h3>5.3 与设计文档的关键差异</h3>
+
+<div class="compare">
+  <div class="compare-card" style="border-color:rgba(248,113,113,0.3);">
+    <h4>设计文档方案</h4>
+    <ul>
+      <li>新增 2 个 VM 类型 + 6 个新字段</li>
+      <li>Main process 做完整语义分类</li>
+      <li>3 个 Tab（Conversation / Context / Raw）</li>
+      <li>改动 shared contracts + assemblers + renderer</li>
+      <li>需要新增 <code>classify-message.ts</code> + <code>build-analysis-timeline.ts</code></li>
+    </ul>
+  </div>
+  <div class="compare-card" style="border-color:rgba(52,211,153,0.3);">
+    <h4>我的方案</h4>
+    <ul>
+      <li>给现有 Block 类型加 1 个可选 meta 字段</li>
+      <li>Main process 只做轻量结构检测（已有 pattern 复用）</li>
+      <li>1 个视图 + Clean/X-Ray 切换 + 可选分析面板</li>
+      <li>Assembler 小改 + Renderer 新增 2 个组件</li>
+      <li>复用 <code>derive-title.ts</code> 已有的检测逻辑</li>
+    </ul>
+  </div>
+</div>
+
+<hr>
+
+<!-- ===== SECTION 6: WHY THIS IS BETTER ===== -->
+<h2>六、为什么这个方案更好 <span class="t">Rationale</span></h2>
+
+<h3>对用户</h3>
+<ul>
+  <li><strong>零学习成本</strong> — 默认视图就是干净的对话，不需要理解 tab 的含义</li>
+  <li><strong>空间连续性</strong> — 注入内容保留在对话流中的原始位置，切换模式不丢失上下文</li>
+  <li><strong>渐进发现</strong> — 看到芯片 → 好奇点击 → 理解注入内容 → 打开分析面板 → 全景理解</li>
+  <li><strong>Consumer-grade feel</strong> — 像 Arc Browser 的 Boosts，不像 Wireshark 的 filter tabs</li>
+</ul>
+
+<h3>对代码</h3>
+<ul>
+  <li><strong>最小改动</strong> — 不重建数据模型，复用已有检测逻辑</li>
+  <li><strong>Renderer owns presentation</strong> — 展示决策在 UI 层，不侵入数据层</li>
+  <li><strong>向后兼容</strong> — meta 字段可选，老数据直接渲染为 clean conversation</li>
+  <li><strong>可增量交付</strong> — Phase 1 (annotation) 可以单独发，Phase 2 (renderer) 可以单独发</li>
+</ul>
+
+<h3>对"分析 AI 底层逻辑"的目标</h3>
+<ul>
+  <li><strong>位置信息是关键</strong> — "这段 CLAUDE.md 是在用户说话之前注入的"，这个空间关系在 tab 切换中会丢失</li>
+  <li><strong>Context Analysis 面板</strong> — 不只是看内容，还能看 token 组成、overhead ratio、注入模式</li>
+  <li><strong>跨 provider 对比</strong> — 同一个 UI 框架，Anthropic 和 OpenAI 的注入模式差异一目了然</li>
+</ul>
+
+</div>
+</body>
+</html>
