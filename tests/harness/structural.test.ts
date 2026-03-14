@@ -96,7 +96,6 @@ describe("Project Structure", () => {
     "src/renderer/src/components/inspector-panel.tsx",
     "src/renderer/src/components/message-block.tsx",
     "src/renderer/src/components/content-block.tsx",
-    "src/renderer/src/components/command-palette.tsx",
     "src/renderer/src/components/error-boundary.tsx",
     "src/renderer/src/hooks/use-proxy-events.ts",
   ];

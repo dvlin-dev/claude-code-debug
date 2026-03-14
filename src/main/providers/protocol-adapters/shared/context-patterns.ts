@@ -7,7 +7,7 @@
 export const NOISE_PATTERNS = [
   /^SessionStart:/i,
   /^hook\s/i,
-  /^startup\s/i,
+  /^startup\s+hook\s/i,
   /^\[.*hook.*\]/i,
   /^<command-name>/i,
   /^<local-command/i,
@@ -51,7 +51,7 @@ export const SUGGESTION_MODE_RE = /^\[SUGGESTION MODE[:\]]/i;
 export const HOOK_INLINE_RES = [
   /^SessionStart:/i,
   /^hook\s/i,
-  /^startup\s/i,
+  /^startup\s+hook\s/i,
   /^<command-name>/i,
   /^<local-command/i,
 ];

@@ -9,11 +9,8 @@ import { useProfileStore } from "./profile-store";
 interface AppState {
   initialized: boolean;
   updateState: UpdateState;
-  commandPaletteOpen: boolean;
   initialize: () => Promise<void>;
   setUpdateState: (updateState: UpdateState) => void;
-  toggleCommandPalette: () => void;
-  setCommandPaletteOpen: (open: boolean) => void;
   checkForUpdates: () => Promise<void>;
   downloadUpdate: () => Promise<void>;
   quitAndInstallUpdate: () => Promise<void>;
@@ -26,7 +23,6 @@ export const useAppStore = create<AppState>((set, get) => {
   return {
     initialized: false,
     updateState: createDefaultUpdateState(),
-    commandPaletteOpen: false,
 
     initialize: async () => {
       if (get().initialized) {
@@ -63,14 +59,6 @@ export const useAppStore = create<AppState>((set, get) => {
 
     setUpdateState: (updateState) => {
       set({ updateState });
-    },
-
-    toggleCommandPalette: () => {
-      set((state) => ({ commandPaletteOpen: !state.commandPaletteOpen }));
-    },
-
-    setCommandPaletteOpen: (open) => {
-      set({ commandPaletteOpen: open });
     },
 
     checkForUpdates: async () => {

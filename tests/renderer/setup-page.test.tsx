@@ -37,7 +37,7 @@ describe("ProfileForm", () => {
           upstreamBaseUrl: "https://api.anthropic.com",
           localPort: 8899,
           enabled: true,
-          autoStart: false,
+          autoStart: true,
         }),
       );
     });
