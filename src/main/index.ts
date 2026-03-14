@@ -69,10 +69,16 @@ app.whenReady().then(async () => {
   createWindow();
   await appBootstrap.startAutoStartProfiles();
 
-  const updateCheckTimer = setTimeout(() => {
+  // Check for updates shortly after launch, then every 30 minutes
+  const UPDATE_CHECK_INTERVAL_MS = 30 * 60 * 1000;
+  const initialCheckTimer = setTimeout(() => {
     void updateService.checkForUpdates().catch(() => undefined);
-  }, 15_000);
-  updateCheckTimer.unref?.();
+  }, 5_000);
+  initialCheckTimer.unref?.();
+  const periodicCheckTimer = setInterval(() => {
+    void updateService.checkForUpdates().catch(() => undefined);
+  }, UPDATE_CHECK_INTERVAL_MS);
+  periodicCheckTimer.unref?.();
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) {

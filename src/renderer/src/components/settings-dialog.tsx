@@ -39,17 +39,28 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   useEffect(() => {
     if (!open) {
       setShowAddForm(false);
+      return;
     }
-  }, [open]);
+    // Auto-check for updates every time settings is opened
+    if (updateState.status !== "downloading") {
+      void checkForUpdates();
+    }
+  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const updateButton = (() => {
     switch (updateState.status) {
       case "available":
         return <Button size="xs" onClick={() => void downloadUpdate()}>Download</Button>;
       case "downloaded":
-        return <Button size="xs" onClick={() => void quitAndInstallUpdate()}>Restart</Button>;
+        return (
+          <Button size="xs" className="bg-success text-white hover:bg-success/90" onClick={() => void quitAndInstallUpdate()}>
+            Restart to Update
+          </Button>
+        );
       case "downloading":
         return <Button size="xs" disabled>Downloading {Math.round(updateState.downloadPercent ?? 0)}%</Button>;
+      case "checking":
+        return <Button variant="outline" size="xs" disabled>Checking...</Button>;
       default:
         return <Button variant="outline" size="xs" onClick={() => void checkForUpdates()}>Check</Button>;
     }

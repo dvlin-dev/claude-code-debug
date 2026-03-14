@@ -3,7 +3,7 @@ import { toast } from "sonner";
 import { useAppStore } from "../stores/app-store";
 
 export function UpdateToastListener() {
-  const { updateState, downloadUpdate, quitAndInstallUpdate } = useAppStore();
+  const { updateState, quitAndInstallUpdate } = useAppStore();
   const lastSignatureRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -19,30 +19,26 @@ export function UpdateToastListener() {
     }
     lastSignatureRef.current = signature;
 
-    if (updateState.status === "available" && updateState.availableVersion) {
-      toast.info(`Version ${updateState.availableVersion} is ready to download.`, {
-        action: {
-          label: "Download",
-          onClick: () => void downloadUpdate(),
-        },
-      });
-      return;
-    }
-
+    // With autoDownload enabled, "available" transitions to "downloading"
+    // automatically, so we only need to notify when download completes.
     if (updateState.status === "downloaded" && updateState.availableVersion) {
-      toast.success(`Version ${updateState.availableVersion} is ready to install.`, {
-        action: {
-          label: "Install",
-          onClick: () => void quitAndInstallUpdate(),
+      toast.success(
+        `Version ${updateState.availableVersion} is ready to install.`,
+        {
+          duration: Infinity,
+          action: {
+            label: "Restart",
+            onClick: () => void quitAndInstallUpdate(),
+          },
         },
-      });
+      );
       return;
     }
 
     if (updateState.status === "error" && updateState.message) {
       toast.error(updateState.message);
     }
-  }, [downloadUpdate, quitAndInstallUpdate, updateState]);
+  }, [quitAndInstallUpdate, updateState]);
 
   return null;
 }

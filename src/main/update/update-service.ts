@@ -196,8 +196,8 @@ export function createUpdateService({
   };
 
   if (supported) {
-    updater.autoDownload = false;
-    updater.autoInstallOnAppQuit = false;
+    updater.autoDownload = true;
+    updater.autoInstallOnAppQuit = true;
     updater.on("checking-for-update", handleChecking);
     updater.on("update-available", handleAvailable);
     updater.on("update-not-available", handleNotAvailable);
