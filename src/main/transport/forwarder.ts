@@ -61,8 +61,13 @@ export function forwardRequest(
             bodyResolve(Buffer.concat(chunks));
           });
           response.on("error", bodyReject);
-          response.on("aborted", () => {
-            bodyReject(new Error("Upstream response aborted"));
+          // Use "close" + complete check instead of deprecated "aborted" event.
+          // The "aborted" event (deprecated since Node v17) can fire spuriously
+          // at the end of a normal response stream, causing false rejections.
+          response.on("close", () => {
+            if (!response.complete) {
+              bodyReject(new Error("Upstream response closed before completion"));
+            }
           });
         });
 
