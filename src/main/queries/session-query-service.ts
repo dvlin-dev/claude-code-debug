@@ -8,7 +8,6 @@ import type {
   SessionTraceVM,
 } from "../../shared/contracts";
 import { ExchangeRepository } from "../storage/exchange-repository";
-import { hasMeaningfulSessionTitle } from "../providers/protocol-adapters/shared/derive-title";
 import { stripXmlTags } from "../../shared/strip-xml";
 import {
   SessionRepository,
@@ -43,36 +42,11 @@ export class SessionQueryService {
     return this.protocolAdapters.get(provider.protocolAdapterId) ?? null;
   }
 
-  private deriveDisplayTitle(row: SessionRow, providerId: ProviderId): string {
-    if (hasMeaningfulSessionTitle(row.title, row.model)) {
-      return row.title;
-    }
-
-    const adapter = this.getAdapter(providerId);
-    if (!adapter) {
-      return row.title;
-    }
-
-    const exchanges = this.exchangeRepository.listBySessionId(row.session_id);
-    for (const exchange of exchanges) {
-      const normalized = safeParseJson<NormalizedExchange | null>(
-        exchange.normalized_json as string,
-        null,
-      );
-      if (!normalized) {
-        continue;
-      }
-
-      const candidate = adapter.sessionMatcher.deriveTitle(normalized);
-      if (
-        candidate &&
-        hasMeaningfulSessionTitle(candidate, normalized.model ?? row.model)
-      ) {
-        return candidate;
-      }
-    }
-
-    // Last resort: clean raw title (strip XML tags, trim)
+  private deriveDisplayTitle(row: SessionRow): string {
+    // Clean the stored title (strip XML wrappers, trim).
+    // Heavy re-derivation from exchanges was removed to avoid N+1 queries
+    // on every listSessions call.  Titles are derived at capture time in
+    // the pipeline and stored in the session row already.
     const cleaned = stripXmlTags(row.title).trim();
     return cleaned || row.model || row.title;
   }
@@ -85,7 +59,7 @@ export class SessionQueryService {
       providerId,
       providerLabel: provider?.label ?? providerId,
       profileId: row.profile_id,
-      title: this.deriveDisplayTitle(row, providerId),
+      title: this.deriveDisplayTitle(row),
       model: row.model,
       updatedAt: row.updated_at,
       exchangeCount: row.exchange_count,
@@ -172,7 +146,7 @@ export class SessionQueryService {
       providerId,
       providerLabel: provider.label,
       profileId: session.profile_id,
-      title: this.deriveDisplayTitle(session, providerId),
+      title: this.deriveDisplayTitle(session),
       instructions,
       timeline: adapter.timelineAssembler.build(normalizedExchanges),
       exchanges: exchanges.map((row) => {

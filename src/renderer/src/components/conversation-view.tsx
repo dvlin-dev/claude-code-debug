@@ -34,23 +34,47 @@ function buildRenderItems(messages: NormalizedMessage[]): RenderItem[] {
   const items: RenderItem[] = [];
 
   for (const msg of messages) {
-    const injectedGroups: Array<{
+    // Walk blocks in order, emitting context-groups and organic message
+    // segments inline to preserve the original sequence.
+    let currentGroup: {
       contextType: ContextType | null;
       blocks: NormalizedMessageBlock[];
       totalChars: number;
-    }> = [];
-    const organicBlocks: NormalizedMessageBlock[] = [];
+    } | null = null;
+    let organicBlocks: NormalizedMessageBlock[] = [];
 
-    let currentGroup: (typeof injectedGroups)[number] | null = null;
+    const flushGroup = () => {
+      if (currentGroup) {
+        items.push({
+          kind: "context-group",
+          contextType: currentGroup.contextType,
+          label: CONTEXT_LABELS[currentGroup.contextType ?? ""] ?? "Injected Context",
+          blocks: currentGroup.blocks,
+          totalChars: currentGroup.totalChars,
+        });
+        currentGroup = null;
+      }
+    };
+
+    const flushOrganic = () => {
+      if (organicBlocks.length > 0) {
+        items.push({
+          kind: "message",
+          message: { ...msg, blocks: organicBlocks },
+        });
+        organicBlocks = [];
+      }
+    };
 
     for (const block of msg.blocks) {
       if (block.meta?.injected) {
+        flushOrganic();
         const ct = block.meta.contextType;
         if (currentGroup && currentGroup.contextType === ct) {
           currentGroup.blocks.push(block);
           currentGroup.totalChars += block.meta.charCount;
         } else {
-          if (currentGroup) injectedGroups.push(currentGroup);
+          flushGroup();
           currentGroup = {
             contextType: ct,
             blocks: [block],
@@ -58,32 +82,12 @@ function buildRenderItems(messages: NormalizedMessage[]): RenderItem[] {
           };
         }
       } else {
-        if (currentGroup) {
-          injectedGroups.push(currentGroup);
-          currentGroup = null;
-        }
+        flushGroup();
         organicBlocks.push(block);
       }
     }
-    if (currentGroup) injectedGroups.push(currentGroup);
-
-    // Emit context groups first, then the organic message (if any)
-    for (const group of injectedGroups) {
-      items.push({
-        kind: "context-group",
-        contextType: group.contextType,
-        label: CONTEXT_LABELS[group.contextType ?? ""] ?? "Injected Context",
-        blocks: group.blocks,
-        totalChars: group.totalChars,
-      });
-    }
-
-    if (organicBlocks.length > 0) {
-      items.push({
-        kind: "message",
-        message: { ...msg, blocks: organicBlocks },
-      });
-    }
+    flushGroup();
+    flushOrganic();
   }
 
   return items;
@@ -111,7 +115,10 @@ export function ConversationView({ timeline, rawMode }: ConversationViewProps) {
   const activeRawMode = rawMode ?? storeRawMode;
   const messages = activeTimeline.messages;
 
-  const renderItems = useMemo(() => buildRenderItems(messages), [messages]);
+  const renderItems = useMemo(
+    () => (activeRawMode ? null : buildRenderItems(messages)),
+    [messages, activeRawMode],
+  );
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -142,24 +149,28 @@ export function ConversationView({ timeline, rawMode }: ConversationViewProps) {
             defaultExpanded={false}
           />
         )}
-        {renderItems.map((item, i) =>
-          item.kind === "context-group" ? (
-            <ContextChip
-              key={`ctx-${i}`}
-              contextType={item.contextType}
-              label={item.label}
-              charCount={item.totalChars}
-              content={extractGroupContent(item.blocks)}
-              defaultExpanded={false}
-            />
-          ) : (
-            <MessageBlock
-              key={`msg-${i}`}
-              message={item.message}
-              rawMode={activeRawMode}
-            />
-          ),
-        )}
+        {activeRawMode
+          ? messages.map((msg, i) => (
+              <MessageBlock key={`msg-${i}`} message={msg} rawMode />
+            ))
+          : renderItems!.map((item, i) =>
+              item.kind === "context-group" ? (
+                <ContextChip
+                  key={`ctx-${i}`}
+                  contextType={item.contextType}
+                  label={item.label}
+                  charCount={item.totalChars}
+                  content={extractGroupContent(item.blocks)}
+                  defaultExpanded={false}
+                />
+              ) : (
+                <MessageBlock
+                  key={`msg-${i}`}
+                  message={item.message}
+                  rawMode={false}
+                />
+              ),
+            )}
         <div ref={bottomRef} />
       </div>
     </ScrollArea>

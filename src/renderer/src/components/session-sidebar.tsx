@@ -79,9 +79,9 @@ export function SessionSidebar() {
   }, [filtered]);
 
   return (
-    <div className="flex h-full flex-col border-r border-border">
+    <div className="flex h-full flex-col border-r border-border overflow-hidden">
       {/* Profiles Section */}
-      <div className="p-3 border-b border-border">
+      <div className="p-3 border-b border-border shrink-0">
         <div className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70 px-1 mb-2">
           Profiles
         </div>
@@ -89,7 +89,7 @@ export function SessionSidebar() {
       </div>
 
       {/* Search & Filter */}
-      <div className="p-3 space-y-2 border-b border-border">
+      <div className="p-3 space-y-2 border-b border-border shrink-0">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -119,7 +119,7 @@ export function SessionSidebar() {
       </div>
 
       {/* Session List */}
-      <ScrollArea className="flex-1">
+      <ScrollArea className="flex-1 min-h-0">
         {filtered.length === 0 ? (
           <EmptyState />
         ) : (
