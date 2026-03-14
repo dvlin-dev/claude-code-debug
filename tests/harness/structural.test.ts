@@ -34,6 +34,7 @@ describe("Project Structure", () => {
     "src/shared/defaults.ts",
     "src/shared/ipc-channels.ts",
     "src/shared/strip-xml.ts",
+    "src/shared/electron-api.ts",
     "src/shared/contracts/provider.ts",
     "src/shared/contracts/profile.ts",
     "src/shared/contracts/capture.ts",
@@ -53,6 +54,8 @@ describe("Project Structure", () => {
     "src/main/ipc/register-ipc.ts",
     "src/main/providers/provider-catalog.ts",
     "src/main/providers/format-provider-label.ts",
+    "src/main/providers/protocol-adapters/shared/parse-utils.ts",
+    "src/main/providers/protocol-adapters/shared/build-inspector-sections.ts",
     "src/main/providers/protocol-adapters/anthropic-messages/index.ts",
     "src/main/providers/protocol-adapters/openai-responses/index.ts",
     "src/main/pipeline/capture-pipeline.ts",
@@ -94,6 +97,7 @@ describe("Project Structure", () => {
     "src/renderer/src/components/message-block.tsx",
     "src/renderer/src/components/content-block.tsx",
     "src/renderer/src/components/command-palette.tsx",
+    "src/renderer/src/components/error-boundary.tsx",
     "src/renderer/src/hooks/use-proxy-events.ts",
   ];
 

@@ -7,7 +7,7 @@ export function parseJson(body: string | null): JsonObject | null {
 
   try {
     const parsed = JSON.parse(body);
-    return parsed && typeof parsed === "object"
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
       ? (parsed as JsonObject)
       : null;
   } catch {

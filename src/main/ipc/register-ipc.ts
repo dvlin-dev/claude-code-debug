@@ -107,10 +107,12 @@ export function registerIpcHandlers(deps: IpcDependencies): () => void {
     return deps.proxyManager.getStatuses();
   });
 
-  ipcMain.handle(
-    IPC.LIST_SESSIONS,
-    (_event, filter?: SessionListFilter) => deps.sessionQueryService.listSessions(filter),
-  );
+  ipcMain.handle(IPC.LIST_SESSIONS, (_event, filter?: SessionListFilter) => {
+    if (filter != null && typeof filter !== "object") {
+      throw new Error("Invalid filter parameter");
+    }
+    return deps.sessionQueryService.listSessions(filter);
+  });
 
   ipcMain.handle(IPC.GET_SESSION_TRACE, (_event, sessionId: string) => {
     if (typeof sessionId !== "string") {
