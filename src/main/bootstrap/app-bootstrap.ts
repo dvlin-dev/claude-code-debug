@@ -135,12 +135,9 @@ export function createAppBootstrap(
 
         try {
           const abortController = new AbortController();
-          request.on("aborted", () => abortController.abort());
-          request.on("close", () => {
-            if (!response.writableEnded) {
-              abortController.abort();
-            }
-          });
+          // Abort upstream only when the client disconnects during response streaming.
+          // Do NOT listen on request "close" — it fires after the request body is
+          // consumed, long before the response finishes streaming, causing a false abort.
           response.on("close", () => {
             if (!response.writableEnded) {
               abortController.abort();
