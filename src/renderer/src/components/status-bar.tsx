@@ -1,25 +1,16 @@
 import { Settings, Github, Sparkles } from "lucide-react";
 import { Button } from "./ui/button";
-import { useSessionStore } from "../stores/session-store";
 
 interface StatusBarProps {
   onSettingsClick: () => void;
 }
 
 export function StatusBar({ onSettingsClick }: StatusBarProps) {
-  const sessions = useSessionStore((state) => state.sessions);
-
   return (
     <div className="drag-region flex h-10 items-center justify-between border-b px-4 shrink-0">
       <span className="pl-16 text-xs font-semibold">Agent Trace</span>
 
       <div className="flex items-center gap-2">
-        <span className="text-[11px] text-muted-foreground">
-          {sessions.length} sessions
-        </span>
-
-        <span className="h-4 w-px bg-border" />
-
         <Button
           variant="ghost"
           size="icon-sm"
