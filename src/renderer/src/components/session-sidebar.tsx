@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from "react";
-import { Search, Plus, Settings } from "lucide-react";
+import { Search } from "lucide-react";
 import { Input } from "./ui/input";
 import { ScrollArea } from "./ui/scroll-area";
 import { SessionItem } from "./session-item";
@@ -30,11 +30,7 @@ function getDateGroup(dateStr: string): string {
 
 const DATE_GROUP_ORDER = ["Today", "Yesterday", "This Week", "Earlier"];
 
-interface SessionSidebarProps {
-  onSettingsClick?: () => void;
-}
-
-export function SessionSidebar({ onSettingsClick }: SessionSidebarProps) {
+export function SessionSidebar() {
   const {
     sessions,
     selectedSessionId,
@@ -145,23 +141,6 @@ export function SessionSidebar({ onSettingsClick }: SessionSidebarProps) {
         )}
       </ScrollArea>
 
-      {/* Footer */}
-      <div className="flex items-center justify-between border-t border-border p-2">
-        <button
-          className="flex items-center gap-1 px-2 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-          onClick={onSettingsClick}
-        >
-          <Plus className="h-3.5 w-3.5" />
-          New Profile
-        </button>
-        <button
-          className="flex items-center gap-1 px-2 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-          onClick={onSettingsClick}
-        >
-          <Settings className="h-3.5 w-3.5" />
-          Settings
-        </button>
-      </div>
     </div>
   );
 }
