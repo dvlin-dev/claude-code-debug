@@ -12,7 +12,7 @@ export const NOISE_PATTERNS = [
   /^<command-name>/i,
   /^<local-command/i,
   /^\[SUGGESTION MODE[:\]]/i,
-  /^#\s+AGENTS\.md/i,
+  /^#\s+AGENTS\.md\b/i,
   /^Caveat:\s*The messages below/i,
 ];
 
@@ -28,7 +28,7 @@ export const NOISE_WRAPPER_PATTERNS = [
   /^<permissions\s+instructions>/i,
   /^<INSTRUCTIONS>/,
   /^\[SUGGESTION MODE[:\]]/i,
-  /^#\s+AGENTS\.md/i,
+  /^#\s+AGENTS\.md\b/i,
 ];
 
 /** Matches a `<system-reminder>` wrapper block. */
@@ -42,7 +42,7 @@ export const COMMAND_CONTEXT_RE = /^<(?:local-command-caveat|command-name|local-
 
 /** Matches Codex/agent environment wrappers and injected instruction blocks. */
 export const AGENT_CONTEXT_RE =
-  /^(?:<(?:environment_context|collaboration_mode|permissions\s+instructions|INSTRUCTIONS)>|#\s+AGENTS\.md)/i;
+  /^(?:<(?:environment_context|collaboration_mode|permissions\s+instructions|INSTRUCTIONS)>|#\s+AGENTS\.md\s*\n)/i;
 
 /** Matches suggestion mode prompt injection. */
 export const SUGGESTION_MODE_RE = /^\[SUGGESTION MODE[:\]]/i;
