@@ -1,19 +1,12 @@
 import { app, BrowserWindow } from "electron";
 import { join } from "path";
-import { SettingsStore } from "./store/settings-store";
-import { createDatabase } from "./store/database";
-import { HistoryStore } from "./store/history-store";
-import { SessionManager } from "./session/session-manager";
-import { createProxyServer, type ProxyServer } from "./proxy/server";
 import { registerIpcHandlers } from "./ipc/register-ipc";
 import { IPC } from "../shared/ipc-channels";
-import { DEFAULT_PROXY_PORT } from "../shared/defaults";
 import { createUpdateService } from "./update/update-service";
-import { migrateLegacyUserData } from "./store/user-data-migration";
-import type { CaptureUpdatePayload } from "../shared/types";
+import { createAppBootstrap, type AppBootstrap } from "./bootstrap/app-bootstrap";
 
 let mainWindow: BrowserWindow | null = null;
-let proxy: ProxyServer | null = null;
+let appBootstrap: AppBootstrap | null = null;
 let disposeIpcHandlers: (() => void) | null = null;
 let disposeUpdateService: (() => void) | null = null;
 
@@ -33,30 +26,14 @@ function createWindow(): void {
   });
 
   if (process.env.ELECTRON_RENDERER_URL) {
-    mainWindow.loadURL(process.env.ELECTRON_RENDERER_URL);
+    void mainWindow.loadURL(process.env.ELECTRON_RENDERER_URL);
   } else {
-    mainWindow.loadFile(join(__dirname, "../renderer/index.html"));
+    void mainWindow.loadFile(join(__dirname, "../renderer/index.html"));
   }
 }
 
 app.whenReady().then(async () => {
   const userDataPath = app.getPath("userData");
-  const appDataPath = app.getPath("appData");
-
-  await migrateLegacyUserData({
-    appDataPath,
-    currentUserDataPath: userDataPath,
-    legacyFolderName: "claude-code-debug",
-  });
-
-  // Initialize stores
-  const settingsStore = new SettingsStore(
-    join(userDataPath, "settings.json"),
-  );
-
-  const db = createDatabase(join(userDataPath, "history.db"));
-  const historyStore = new HistoryStore(db);
-  const sessionManager = new SessionManager();
   const updateService = createUpdateService({
     currentVersion: app.getVersion(),
     platform: process.platform,
@@ -64,51 +41,33 @@ app.whenReady().then(async () => {
   });
   disposeUpdateService = () => updateService.dispose();
 
-  // Initialize proxy (not started yet)
-  const settings = settingsStore.getSettings();
-  proxy = createProxyServer({
-    targetUrl: settings.targetUrl || "https://api.anthropic.com",
-    port: DEFAULT_PROXY_PORT,
-    onRequest: (record) => {
-      // Assign session
-      const sessionId = sessionManager.assignSession(record);
-      record.sessionId = sessionId;
-
-      // Persist
-      historyStore.saveRequest(record);
-      historyStore.prune();
-
-      // Push to renderer
-      if (mainWindow) {
-        const payload: CaptureUpdatePayload = {
-          sessions: historyStore.listSessions(),
-          updatedSessionId: sessionId,
-          updatedRequestId: record.requestId,
-        };
-        mainWindow.webContents.send(
-          IPC.CAPTURE_UPDATED,
-          payload,
-        );
-      }
+  appBootstrap = createAppBootstrap({
+    userDataPath,
+    onTraceCaptured: (payload) => {
+      mainWindow?.webContents.send(IPC.TRACE_CAPTURED, payload);
     },
-    onError: (error) => {
-      if (mainWindow) {
-        mainWindow.webContents.send(IPC.PROXY_ERROR, error);
-      }
+    onProfileStatusChanged: (payload) => {
+      mainWindow?.webContents.send(IPC.PROFILE_STATUS_CHANGED, payload);
+    },
+    onProfileError: (message) => {
+      mainWindow?.webContents.send(IPC.PROXY_ERROR, message);
     },
   });
 
-  // Register IPC handlers
   disposeIpcHandlers = registerIpcHandlers({
-    settingsStore,
-    historyStore,
-    sessionManager,
-    getProxy: () => proxy,
+    profileStore: appBootstrap.profileStore,
+    proxyManager: appBootstrap.proxyManager,
+    sessionQueryService: appBootstrap.sessionQueryService,
+    exchangeQueryService: appBootstrap.exchangeQueryService,
+    clearHistory: () => {
+      appBootstrap?.clearHistory();
+    },
     getMainWindow: () => mainWindow,
     updateService,
   });
 
   createWindow();
+  await appBootstrap.startAutoStartProfiles();
 
   const updateCheckTimer = setTimeout(() => {
     void updateService.checkForUpdates().catch(() => undefined);
@@ -131,7 +90,5 @@ app.on("window-all-closed", () => {
 app.on("before-quit", async () => {
   disposeIpcHandlers?.();
   disposeUpdateService?.();
-  if (proxy?.isRunning()) {
-    await proxy.stop();
-  }
+  await appBootstrap?.dispose();
 });

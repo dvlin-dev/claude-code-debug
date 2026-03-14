@@ -1,412 +1,419 @@
-/**
- * Integration Harness Tests
- *
- * Validates the end-to-end data pipeline:
- *   HTTP request → Proxy capture → Session grouping → DB persistence → Retrieval
- *
- * Uses real HTTP servers and SQLite (in-memory) — no mocks at the boundary.
- */
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import http from "node:http";
-import { createProxyServer, type ProxyServer } from "../../src/main/proxy/server";
-import { SessionManager } from "../../src/main/session/session-manager";
-import { HistoryStore } from "../../src/main/store/history-store";
-import { createDatabase } from "../../src/main/store/database";
-import type { RequestRecord } from "../../src/shared/types";
+import { zstdCompressSync } from "node:zlib";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { createProviderCatalog } from "../../src/main/providers/provider-catalog";
+import { anthropicMessagesAdapter } from "../../src/main/providers/protocol-adapters/anthropic-messages";
+import { openaiResponsesAdapter } from "../../src/main/providers/protocol-adapters/openai-responses";
+import { CapturePipeline } from "../../src/main/pipeline/capture-pipeline";
+import { SessionResolver } from "../../src/main/pipeline/session-resolver";
+import { ExchangeQueryService } from "../../src/main/queries/exchange-query-service";
+import { SessionQueryService } from "../../src/main/queries/session-query-service";
+import { ExchangeRepository } from "../../src/main/storage/exchange-repository";
+import { HistoryMaintenanceService } from "../../src/main/storage/history-maintenance-service";
+import { SessionRepository } from "../../src/main/storage/session-repository";
+import { createSqliteDatabase } from "../../src/main/storage/sqlite";
+import { forwardRequest } from "../../src/main/transport/forwarder";
+import { createProfileListener } from "../../src/main/transport/listener";
+import type {
+  CapturedExchange,
+  ConnectionProfile,
+  ProtocolAdapter,
+} from "../../src/shared/contracts";
 import type Database from "better-sqlite3";
 
-// --- Test helpers ---
+function capturedBody(
+  bytes: Buffer,
+  contentType: string,
+  contentEncoding: string | null = null,
+) {
+  return {
+    bytes,
+    contentType,
+    contentEncoding,
+  };
+}
 
 function getAvailablePort(): Promise<number> {
   return new Promise((resolve) => {
-    const srv = http.createServer();
-    srv.listen(0, () => {
-      const port = (srv.address() as { port: number }).port;
-      srv.close(() => resolve(port));
+    const server = http.createServer();
+    server.listen(0, "127.0.0.1", () => {
+      const address = server.address();
+      const port = !address || typeof address === "string" ? 0 : address.port;
+      server.close(() => resolve(port));
     });
   });
 }
 
-function makeClaudeBody(opts: {
-  model?: string;
-  system?: string;
-  userMessage?: string;
-  messages?: Array<{ role: string; content: string }>;
-  metadataUserId?: string;
-}): string {
-  return JSON.stringify({
-    model: opts.model ?? "claude-opus-4-6",
-    system: opts.system ?? "You are a helpful assistant.",
-    messages: opts.messages ?? [
-      { role: "user", content: opts.userMessage ?? "Hello" },
-    ],
-    metadata: opts.metadataUserId
-      ? { user_id: opts.metadataUserId }
-      : undefined,
-    max_tokens: 1024,
-    stream: false,
+function readRequestBody(req: http.IncomingMessage): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    req.on("data", (chunk: Buffer) => chunks.push(chunk));
+    req.on("end", () => resolve(Buffer.concat(chunks)));
+    req.on("error", reject);
   });
 }
 
-function httpPost(
-  url: string,
-  path: string,
-  body: string,
-): Promise<{ status: number; body: string }> {
+function httpPost(url: string, path: string, body: string): Promise<{ status: number; body: string }> {
   return new Promise((resolve, reject) => {
-    const u = new URL(url);
-    const req = http.request(
+    const target = new URL(url);
+    const request = http.request(
       {
-        hostname: u.hostname,
-        port: u.port,
+        hostname: target.hostname,
+        port: target.port,
         path,
         method: "POST",
-        headers: {
-          "content-type": "application/json",
-          "x-api-key": "test-key",
-        },
+        headers: { "content-type": "application/json" },
       },
-      (res) => {
+      (response) => {
         const chunks: Buffer[] = [];
-        res.on("data", (c) => chunks.push(c));
-        res.on("end", () =>
+        response.on("data", (chunk: Buffer) => chunks.push(chunk));
+        response.on("end", () => {
           resolve({
-            status: res.statusCode || 0,
-            body: Buffer.concat(chunks).toString(),
-          }),
-        );
+            status: response.statusCode ?? 0,
+            body: Buffer.concat(chunks).toString("utf-8"),
+          });
+        });
       },
     );
-    req.on("error", reject);
-    req.end(body);
+    request.on("error", reject);
+    request.end(body);
   });
 }
 
-// --- Test suite ---
-
-describe("End-to-End Pipeline: Proxy → Session → DB", () => {
-  let targetServer: http.Server;
-  let targetPort: number;
-  let proxyPort: number;
-  let proxy: ProxyServer;
+describe("multi-provider integration harness", () => {
+  let upstreamServer: http.Server;
+  let upstreamPort: number;
   let db: Database.Database;
-  let historyStore: HistoryStore;
-  let sessionManager: SessionManager;
-  let capturedRecords: RequestRecord[];
+  let sessionRepository: SessionRepository;
+  let exchangeRepository: ExchangeRepository;
+  let sessionQuery: SessionQueryService;
+  let exchangeQuery: ExchangeQueryService;
+  let listener: ReturnType<typeof createProfileListener>;
+  let profile: ConnectionProfile;
+  let pipeline: CapturePipeline;
 
   beforeEach(async () => {
-    capturedRecords = [];
-    sessionManager = new SessionManager();
-    db = createDatabase(":memory:");
-    historyStore = new HistoryStore(db);
-
-    // Start a mock target server that returns a Claude-like response
-    targetPort = await getAvailablePort();
-    targetServer = http.createServer((req, res) => {
-      const chunks: Buffer[] = [];
-      req.on("data", (c) => chunks.push(c));
+    upstreamPort = await getAvailablePort();
+    upstreamServer = http.createServer((req, res) => {
+      const bodyChunks: Buffer[] = [];
+      req.on("data", (chunk: Buffer) => bodyChunks.push(chunk));
       req.on("end", () => {
-        const body = Buffer.concat(chunks).toString();
-        let model = "claude-opus-4-6";
-        try {
-          model = JSON.parse(body).model || model;
-        } catch {
-          /* ignore */
-        }
-
+        const body = JSON.parse(Buffer.concat(bodyChunks).toString("utf-8"));
         res.writeHead(200, { "content-type": "application/json" });
         res.end(
           JSON.stringify({
-            id: "msg_test",
-            type: "message",
             role: "assistant",
-            model,
-            content: [{ type: "text", text: "Hello! How can I help?" }],
-            usage: { input_tokens: 10, output_tokens: 8 },
+            model: body.model,
+            content: [{ type: "text", text: "Hello from upstream" }],
           }),
         );
       });
     });
     await new Promise<void>((resolve) =>
-      targetServer.listen(targetPort, "127.0.0.1", resolve),
+      upstreamServer.listen(upstreamPort, "127.0.0.1", resolve),
     );
 
-    // Start proxy wired to the full pipeline
-    proxyPort = await getAvailablePort();
-    proxy = createProxyServer({
-      targetUrl: `http://127.0.0.1:${targetPort}`,
-      port: proxyPort,
-      onRequest: (record) => {
-        // Full pipeline: session → persist → collect
-        const sessionId = sessionManager.assignSession(record);
-        record.sessionId = sessionId;
-        historyStore.saveRequest(record);
-        capturedRecords.push(record);
-      },
-      onError: (err) => {
-        console.error("Proxy error in integration test:", err);
+    db = createSqliteDatabase(":memory:");
+    sessionRepository = new SessionRepository(db);
+    exchangeRepository = new ExchangeRepository(db);
+
+    const providerCatalog = createProviderCatalog();
+    const protocolAdapters = new Map<string, ProtocolAdapter>([
+      ["anthropic-messages", anthropicMessagesAdapter],
+      ["openai-responses", openaiResponsesAdapter],
+    ]);
+
+    const historyMaintenance = new HistoryMaintenanceService({
+      sessionRepository,
+      exchangeRepository,
+    });
+    pipeline = new CapturePipeline({
+      providerCatalog,
+      protocolAdapters,
+      sessionResolver: new SessionResolver(sessionRepository),
+      sessionRepository,
+      exchangeRepository,
+      historyMaintenance,
+    });
+
+    sessionQuery = new SessionQueryService(
+      sessionRepository,
+      exchangeRepository,
+      providerCatalog,
+      protocolAdapters,
+    );
+    exchangeQuery = new ExchangeQueryService(exchangeRepository, providerCatalog);
+
+    profile = {
+      id: "anthropic-dev",
+      name: "Anthropic Dev",
+      providerId: "anthropic",
+      upstreamBaseUrl: `http://127.0.0.1:${upstreamPort}`,
+      localPort: await getAvailablePort(),
+      enabled: true,
+      autoStart: false,
+    };
+
+    listener = createProfileListener(profile, {
+      onRequest: async (activeProfile, req, res) => {
+        const startedAt = new Date().toISOString();
+        const bodyBuffer = await readRequestBody(req);
+        const forwarded = await forwardRequest({
+          upstreamBaseUrl: activeProfile.upstreamBaseUrl,
+          method: req.method ?? "GET",
+          path: req.url ?? "/",
+          headers: Object.fromEntries(
+            Object.entries(req.headers).map(([key, value]) => [
+              key,
+              Array.isArray(value) ? value.join(", ") : value,
+            ]),
+          ),
+          body: bodyBuffer,
+        });
+
+        res.writeHead(forwarded.statusCode, forwarded.headers);
+
+        const chunks: Buffer[] = [];
+        forwarded.response.on("data", (chunk: Buffer) => {
+          const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+          chunks.push(buf);
+          res.write(buf);
+        });
+
+        await new Promise<void>((resolve, reject) => {
+          forwarded.response.on("end", resolve);
+          forwarded.response.on("error", reject);
+        });
+
+        res.end();
+
+        const responseBody = Buffer.concat(chunks);
+        const exchange: CapturedExchange = {
+          exchangeId: crypto.randomUUID(),
+          providerId: activeProfile.providerId,
+          profileId: activeProfile.id,
+          method: req.method ?? "GET",
+          path: req.url ?? "/",
+          requestHeaders: Object.fromEntries(
+            Object.entries(req.headers)
+              .filter(([, value]) => value != null)
+              .map(([key, value]) => [key, Array.isArray(value) ? value.join(", ") : String(value)]),
+          ),
+          requestBody: capturedBody(
+            bodyBuffer,
+            String(req.headers["content-type"] ?? "application/json"),
+            typeof req.headers["content-encoding"] === "string"
+              ? req.headers["content-encoding"]
+              : null,
+          ),
+          responseHeaders: Object.fromEntries(
+            Object.entries(forwarded.headers)
+              .filter(([, value]) => value != null)
+              .map(([key, value]) => [key, Array.isArray(value) ? value.join(", ") : String(value)]),
+          ),
+          responseBody: capturedBody(
+            responseBody,
+            String(forwarded.headers["content-type"] ?? "application/json"),
+            typeof forwarded.headers["content-encoding"] === "string"
+              ? forwarded.headers["content-encoding"]
+              : null,
+          ),
+          statusCode: forwarded.statusCode,
+          startedAt,
+          durationMs: 1,
+          requestSize: bodyBuffer.length,
+          responseSize: responseBody.length,
+        };
+
+        pipeline.process(exchange);
       },
     });
-    await proxy.start();
+
+    await listener.start();
   });
 
   afterEach(async () => {
-    await proxy.stop();
-    await new Promise<void>((resolve) => targetServer.close(() => resolve()));
+    if (listener.isRunning()) {
+      await listener.stop();
+    }
+    await new Promise<void>((resolve) => upstreamServer.close(() => resolve()));
     db.close();
   });
 
-  it("captures a single request through the full pipeline", async () => {
-    const body = makeClaudeBody({ userMessage: "What is 2+2?" });
+  it("captures an anthropic exchange end-to-end and returns a session trace", async () => {
     const result = await httpPost(
-      `http://127.0.0.1:${proxyPort}`,
+      `http://127.0.0.1:${profile.localPort}`,
       "/v1/messages",
-      body,
+      JSON.stringify({
+        model: "claude-opus-4-6",
+        metadata: { user_id: "user_hash_account__session_uuid-123" },
+        messages: [{ role: "user", content: "Hello" }],
+      }),
     );
 
     expect(result.status).toBe(200);
-    expect(capturedRecords).toHaveLength(1);
 
-    const record = capturedRecords[0]!;
-    expect(record.sessionId).toBeTruthy();
-    expect(record.method).toBe("POST");
-    expect(record.path).toBe("/v1/messages");
-    expect(record.model).toBe("claude-opus-4-6");
-    expect(record.statusCode).toBe(200);
-    expect(record.duration).toBeGreaterThan(0);
-    expect(record.requestSize).toBeGreaterThan(0);
-    expect(record.responseSize).toBeGreaterThan(0);
+    const sessions = await sessionQuery.listSessions();
+    expect(sessions.length).toBe(1);
 
-    // Verify DB persistence
-    const sessions = historyStore.listSessions();
-    expect(sessions).toHaveLength(1);
-    expect(sessions[0]!.requestCount).toBe(1);
-    expect(sessions[0]!.model).toBe("claude-opus-4-6");
+    const trace = await sessionQuery.getSessionTrace(sessions[0]!.sessionId);
+    const detail = await exchangeQuery.getExchangeDetail(trace.exchanges[0]!.exchangeId);
 
-    const requests = historyStore.listRequests(record.sessionId);
-    expect(requests).toHaveLength(1);
-    expect(requests[0]!.requestId).toBe(record.requestId);
+    expect(trace.timeline.messages.length).toBeGreaterThan(0);
+    expect(detail?.inspector.sections.length).toBeGreaterThan(0);
   });
 
-  it("groups multiple requests into the same session by metadata session key", async () => {
-    const sessionUserId = "user_demo_account__session_shared-harness-session";
+  it("captures a zstd-compressed codex exchange end-to-end through the local listener", async () => {
+    await listener.stop();
 
-    // Send 3 requests with the same system prompt
-    for (let i = 0; i < 3; i++) {
-      await httpPost(
-        `http://127.0.0.1:${proxyPort}`,
-        "/v1/messages",
-        makeClaudeBody({
-          system: "You are a coding assistant for TypeScript projects.",
-          userMessage: `Question ${i}`,
-          metadataUserId: sessionUserId,
-        }),
+    profile = {
+      id: "codex-dev",
+      name: "Codex Dev",
+      providerId: "codex",
+      upstreamBaseUrl: `http://127.0.0.1:${upstreamPort}`,
+      localPort: await getAvailablePort(),
+      enabled: true,
+      autoStart: false,
+    };
+
+    await new Promise<void>((resolve) => upstreamServer.close(() => resolve()));
+    upstreamServer = http.createServer(async (req, res) => {
+      await readRequestBody(req);
+      res.writeHead(200, { "content-type": "text/event-stream" });
+      res.end(
+        'data: {"type":"response.completed","response":{"id":"resp_1","status":"completed","model":"gpt-5.4","output":[{"id":"msg_1","type":"message","status":"completed","role":"assistant","content":[{"type":"output_text","text":"probe"}]}]}}\n\ndata: [DONE]\n',
       );
-    }
-
-    expect(capturedRecords).toHaveLength(3);
-
-    // All should be in the same session
-    const sessionIds = new Set(capturedRecords.map((r) => r.sessionId));
-    expect(sessionIds.size).toBe(1);
-
-    const sessions = historyStore.listSessions();
-    expect(sessions).toHaveLength(1);
-    expect(sessions[0]!.requestCount).toBe(3);
-  });
-
-  it("separates requests with different system prompts into different sessions", async () => {
-    await httpPost(
-      `http://127.0.0.1:${proxyPort}`,
-      "/v1/messages",
-      makeClaudeBody({ system: "System prompt A" }),
-    );
-    await httpPost(
-      `http://127.0.0.1:${proxyPort}`,
-      "/v1/messages",
-      makeClaudeBody({ system: "System prompt B" }),
-    );
-
-    expect(capturedRecords).toHaveLength(2);
-    const sessionIds = new Set(capturedRecords.map((r) => r.sessionId));
-    expect(sessionIds.size).toBe(2);
-
-    const sessions = historyStore.listSessions();
-    expect(sessions).toHaveLength(2);
-  });
-
-  it("persists full request/response data for retrieval", async () => {
-    const body = makeClaudeBody({ userMessage: "Explain closures" });
-    await httpPost(`http://127.0.0.1:${proxyPort}`, "/v1/messages", body);
-
-    const record = capturedRecords[0]!;
-    const retrieved = historyStore.getRequest(record.requestId);
-
-    expect(retrieved).not.toBeNull();
-    expect(retrieved!.requestBody).toContain("Explain closures");
-    expect(retrieved!.responseBody).toContain("How can I help");
-    expect(retrieved!.requestHeaders["content-type"]).toBe("application/json");
-    expect(retrieved!.responseHeaders?.["content-type"]).toBe(
-      "application/json",
-    );
-  });
-
-  it("search finds requests by content", async () => {
-    await httpPost(
-      `http://127.0.0.1:${proxyPort}`,
-      "/v1/messages",
-      makeClaudeBody({ userMessage: "unique_search_term_xyz" }),
-    );
-
-    const results = historyStore.search("unique_search_term_xyz");
-    expect(results.requests).toHaveLength(1);
-    expect(results.requests[0]!.requestBody).toContain("unique_search_term_xyz");
-  });
-
-  it("proxy transparently forwards to target (client gets correct response)", async () => {
-    const result = await httpPost(
-      `http://127.0.0.1:${proxyPort}`,
-      "/v1/messages",
-      makeClaudeBody({}),
-    );
-
-    expect(result.status).toBe(200);
-    const parsed = JSON.parse(result.body);
-    expect(parsed.type).toBe("message");
-    expect(parsed.role).toBe("assistant");
-    expect(parsed.content[0].text).toBe("Hello! How can I help?");
-  });
-
-  it("handles concurrent requests without data corruption", async () => {
-    const sessionUserId =
-      "user_concurrent_account__session_shared-concurrent-session";
-    const promises = Array.from({ length: 5 }, (_, i) =>
-      httpPost(
-        `http://127.0.0.1:${proxyPort}`,
-        "/v1/messages",
-        makeClaudeBody({
-          system: "Shared system prompt",
-          userMessage: `Concurrent request ${i}`,
-          metadataUserId: sessionUserId,
-        }),
-      ),
-    );
-
-    const results = await Promise.all(promises);
-    for (const r of results) {
-      expect(r.status).toBe(200);
-    }
-
-    expect(capturedRecords).toHaveLength(5);
-
-    // All should be same session (same metadata session key)
-    const sessionIds = new Set(capturedRecords.map((r) => r.sessionId));
-    expect(sessionIds.size).toBe(1);
-
-    // All request IDs should be unique
-    const requestIds = capturedRecords.map((r) => r.requestId);
-    expect(new Set(requestIds).size).toBe(5);
-  });
-});
-
-describe("SSE Streaming Pipeline", () => {
-  let sseServer: http.Server;
-  let ssePort: number;
-  let proxyPort: number;
-  let proxy: ProxyServer;
-  let capturedRecords: RequestRecord[];
-
-  beforeEach(async () => {
-    capturedRecords = [];
-
-    // SSE target server
-    ssePort = await getAvailablePort();
-    sseServer = http.createServer((req, res) => {
-      const chunks: Buffer[] = [];
-      req.on("data", (c) => chunks.push(c));
-      req.on("end", () => {
-        res.writeHead(200, {
-          "content-type": "text/event-stream",
-          "cache-control": "no-cache",
-          connection: "keep-alive",
-        });
-
-        // Send SSE events
-        const events = [
-          'event: content_block_delta\ndata: {"type":"content_block_delta","delta":{"type":"text_delta","text":"Hello"}}\n\n',
-          'event: content_block_delta\ndata: {"type":"content_block_delta","delta":{"type":"text_delta","text":" world"}}\n\n',
-          "event: message_stop\ndata: {}\n\n",
-        ];
-
-        let i = 0;
-        const timer = setInterval(() => {
-          if (i < events.length) {
-            res.write(events[i]);
-            i++;
-          } else {
-            clearInterval(timer);
-            res.end();
-          }
-        }, 10);
-      });
     });
     await new Promise<void>((resolve) =>
-      sseServer.listen(ssePort, "127.0.0.1", resolve),
+      upstreamServer.listen(upstreamPort, "127.0.0.1", resolve),
     );
 
-    proxyPort = await getAvailablePort();
-    proxy = createProxyServer({
-      targetUrl: `http://127.0.0.1:${ssePort}`,
-      port: proxyPort,
-      onRequest: (record) => capturedRecords.push(record),
-      onError: () => {},
+    listener = createProfileListener(profile, {
+      onRequest: async (activeProfile, req, res) => {
+        const startedAt = new Date().toISOString();
+        const bodyBuffer = await readRequestBody(req);
+        const forwarded = await forwardRequest({
+          upstreamBaseUrl: activeProfile.upstreamBaseUrl,
+          method: req.method ?? "GET",
+          path: req.url ?? "/",
+          headers: Object.fromEntries(
+            Object.entries(req.headers).map(([key, value]) => [
+              key,
+              Array.isArray(value) ? value.join(", ") : value,
+            ]),
+          ),
+          body: bodyBuffer,
+        });
+
+        res.writeHead(forwarded.statusCode, forwarded.headers);
+
+        const chunks: Buffer[] = [];
+        forwarded.response.on("data", (chunk: Buffer) => {
+          const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+          chunks.push(buf);
+          res.write(buf);
+        });
+
+        await new Promise<void>((resolve, reject) => {
+          forwarded.response.on("end", resolve);
+          forwarded.response.on("error", reject);
+        });
+
+        res.end();
+
+        const responseBody = Buffer.concat(chunks);
+        const exchange: CapturedExchange = {
+          exchangeId: crypto.randomUUID(),
+          providerId: activeProfile.providerId,
+          profileId: activeProfile.id,
+          method: req.method ?? "GET",
+          path: req.url ?? "/",
+          requestHeaders: Object.fromEntries(
+            Object.entries(req.headers)
+              .filter(([, value]) => value != null)
+              .map(([key, value]) => [key, Array.isArray(value) ? value.join(", ") : String(value)]),
+          ),
+          requestBody: {
+            bytes: bodyBuffer,
+            contentType: String(req.headers["content-type"] ?? "application/json"),
+            contentEncoding:
+              typeof req.headers["content-encoding"] === "string"
+                ? req.headers["content-encoding"]
+                : null,
+          },
+          responseHeaders: Object.fromEntries(
+            Object.entries(forwarded.headers)
+              .filter(([, value]) => value != null)
+              .map(([key, value]) => [key, Array.isArray(value) ? value.join(", ") : String(value)]),
+          ),
+          responseBody: {
+            bytes: responseBody,
+            contentType: String(forwarded.headers["content-type"] ?? "text/event-stream"),
+            contentEncoding:
+              typeof forwarded.headers["content-encoding"] === "string"
+                ? forwarded.headers["content-encoding"]
+                : null,
+          },
+          statusCode: forwarded.statusCode,
+          startedAt,
+          durationMs: 1,
+          requestSize: bodyBuffer.length,
+          responseSize: responseBody.length,
+        };
+
+        pipeline.process(exchange);
+      },
     });
-    await proxy.start();
-  });
 
-  afterEach(async () => {
-    await proxy.stop();
-    await new Promise<void>((resolve) => sseServer.close(() => resolve()));
-  });
-
-  it("streams SSE events in real-time and collects full response", async () => {
-    const receivedChunks: string[] = [];
+    await listener.start();
 
     await new Promise<void>((resolve, reject) => {
-      const req = http.request(
+      const request = http.request(
         {
           hostname: "127.0.0.1",
-          port: proxyPort,
-          path: "/v1/messages",
+          port: profile.localPort,
+          path: "/responses",
           method: "POST",
-          headers: { "content-type": "application/json" },
+          headers: {
+            "content-type": "application/json",
+            "content-encoding": "zstd",
+            session_id: "session-codex-1",
+            "x-codex-turn-metadata":
+              '{"turn_id":"turn-codex-1","sandbox":"none"}',
+          },
         },
-        (res) => {
-          expect(res.headers["content-type"]).toContain("text/event-stream");
-
-          res.on("data", (chunk: Buffer) => {
-            receivedChunks.push(chunk.toString());
-          });
-          res.on("end", resolve);
-          res.on("error", reject);
+        (response) => {
+          const chunks: Buffer[] = [];
+          response.on("data", (chunk: Buffer) => chunks.push(chunk));
+          response.on("end", () => resolve());
         },
       );
-      req.end(
-        makeClaudeBody({ model: "claude-sonnet-4-6" }),
+      request.on("error", reject);
+      request.end(
+        zstdCompressSync(
+          Buffer.from(
+            JSON.stringify({
+              model: "gpt-5.4",
+              instructions: "You are Codex.",
+              input: [
+                {
+                  type: "message",
+                  role: "user",
+                  content: [{ type: "input_text", text: "probe" }],
+                },
+              ],
+              tools: [],
+              stream: true,
+              store: false,
+            }),
+            "utf-8",
+          ),
+        ),
       );
     });
 
-    // Client received streaming chunks
-    expect(receivedChunks.length).toBeGreaterThanOrEqual(1);
-    const fullResponse = receivedChunks.join("");
-    expect(fullResponse).toContain("Hello");
-    expect(fullResponse).toContain("world");
-
-    // Proxy captured the full collected response
-    expect(capturedRecords).toHaveLength(1);
-    const record = capturedRecords[0]!;
-    expect(record.responseBody).toContain("Hello");
-    expect(record.responseBody).toContain("world");
-    expect(record.model).toBe("claude-sonnet-4-6");
+    const sessions = await sessionQuery.listSessions({ providerId: "codex" });
+    expect(sessions).toHaveLength(1);
+    expect(sessions[0]?.model).toBe("gpt-5.4");
   });
 });

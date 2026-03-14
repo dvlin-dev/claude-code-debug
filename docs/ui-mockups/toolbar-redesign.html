@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>Status Bar + Settings + Command Palette Redesign</title>
+<style>
+  :root {
+    --bg:#0f0f0f; --surface:#171717; --elevated:#1e1e1e; --hover:#262626;
+    --border:#2a2a2a; --text:#e5e5e5; --text2:#999; --text3:#666; --text4:#444;
+    --accent:#7c6bf5; --accent-s:rgba(124,107,245,0.12);
+    --green:#34d399; --green-s:rgba(52,211,153,0.12);
+    --orange:#fb923c; --orange-s:rgba(251,146,60,0.12);
+    --red:#f87171;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;background:#050505;color:var(--text);-webkit-font-smoothing:antialiased;}
+  .page{max-width:800px;margin:0 auto;padding:48px 32px;}
+  h1{font-size:24px;font-weight:700;letter-spacing:-0.02em;margin-bottom:4px;}
+  h1 span{color:var(--accent);}
+  .sub{color:var(--text2);font-size:13px;margin-bottom:40px;}
+  h2{font-size:16px;font-weight:600;margin:36px 0 6px;}
+  h2 .t{display:inline-block;background:var(--accent-s);color:var(--accent);font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px;margin-left:6px;vertical-align:middle;text-transform:uppercase;letter-spacing:0.05em;}
+  .desc{color:var(--text2);font-size:12px;margin-bottom:14px;line-height:1.6;}
+  hr{border:none;border-top:1px solid var(--border);margin:36px 0;}
+
+  .frame{background:var(--bg);border:1px solid var(--border);overflow:hidden;box-shadow:0 12px 32px rgba(0,0,0,0.5);margin:12px 0 28px;}
+
+  /* Status Bar */
+  .sb{height:40px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 12px;gap:6px;font-size:11px;}
+  .sb-title{font-weight:600;font-size:12px;padding-left:64px;flex:1;}
+  .sb-pill{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border:1px solid var(--border);font-size:10px;color:var(--text2);font-family:'SF Mono',monospace;cursor:pointer;}
+  .sb-pill:hover{background:var(--hover);color:var(--text);}
+  .sb-dot{width:6px;height:6px;border-radius:50%;}
+  .sb-dot.on{background:var(--green);box-shadow:0 0 4px rgba(52,211,153,0.4);}
+  .sb-dot.off{background:var(--text4);}
+  .sb-sep{width:1px;height:16px;background:var(--border);margin:0 2px;}
+  .sb-btn{width:28px;height:28px;display:flex;align-items:center;justify-content:center;color:var(--text3);cursor:pointer;border:1px solid transparent;}
+  .sb-btn:hover{background:var(--hover);color:var(--text2);}
+  .sb-count{color:var(--text3);font-size:10px;}
+  .sb-kbd{font-size:9px;color:var(--text4);border:1px solid var(--border);padding:1px 5px;font-family:'SF Mono',monospace;cursor:pointer;}
+  .sb-kbd:hover{background:var(--hover);color:var(--text2);}
+
+  /* Command Palette */
+  .cp-overlay{background:rgba(0,0,0,0.5);padding:40px;display:flex;justify-content:center;align-items:flex-start;min-height:360px;}
+  .cp{width:100%;max-width:480px;border:1px solid var(--border);background:var(--surface);margin-top:40px;}
+  .cp-input{display:flex;align-items:center;gap-8px;padding:10px 14px;border-bottom:1px solid var(--border);}
+  .cp-input svg{width:14px;height:14px;color:var(--text3);margin-right:8px;flex-shrink:0;}
+  .cp-input span{font-size:13px;color:var(--text4);}
+  .cp-group{padding:4px 6px;}
+  .cp-gl{font-size:9px;color:var(--text4);font-weight:700;padding:6px 8px 3px;text-transform:uppercase;letter-spacing:0.06em;}
+  .cp-item{padding:7px 10px;display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;}
+  .cp-item:hover{background:var(--hover);}
+  .cp-item.a{background:var(--accent-s);}
+  .cp-item-t{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .cp-item-r{font-size:10px;color:var(--text4);flex-shrink:0;}
+  .cp-item-r.run{color:var(--green);}
+  .pb{display:inline-flex;padding:1px 5px;font-size:9px;font-weight:600;}
+  .pb.an{background:var(--orange-s);color:var(--orange);}
+  .pb.cx{background:var(--green-s);color:var(--green);}
+
+  /* Settings */
+  .st-overlay{background:rgba(0,0,0,0.5);padding:40px;display:flex;justify-content:center;align-items:flex-start;min-height:480px;}
+  .st{width:100%;max-width:520px;border:1px solid var(--border);background:var(--surface);margin-top:20px;}
+  .st-header{padding:14px 16px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+  .st-title{font-size:14px;font-weight:600;}
+  .st-close{color:var(--text3);cursor:pointer;font-size:14px;}
+  .st-body{padding:16px;}
+  .st-sec{margin-bottom:16px;}
+  .st-sec-t{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:var(--text3);margin-bottom:8px;}
+  .st-pf{display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--border);margin-bottom:4px;}
+  .st-pf-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+  .st-pf-info{flex:1;min-width:0;}
+  .st-pf-name{font-size:12px;font-weight:500;}
+  .st-pf-url{font-size:10px;color:var(--text3);font-family:'SF Mono',monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .st-pf-port{font-size:10px;color:var(--text2);font-family:'SF Mono',monospace;flex-shrink:0;}
+  .st-pf-btn{font-size:10px;color:var(--text2);border:1px solid var(--border);padding:2px 8px;cursor:pointer;flex-shrink:0;}
+  .st-pf-btn:hover{background:var(--hover);color:var(--text);}
+  .st-pf-btn.stop{color:var(--red);}
+  .st-add{font-size:11px;color:var(--accent);cursor:pointer;padding:4px 0;margin-top:4px;}
+  .st-add:hover{text-decoration:underline;}
+  .st-ver{display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border:1px solid var(--border);}
+  .st-ver-info{font-size:12px;}
+  .st-ver-sub{font-size:10px;color:var(--text3);margin-top:1px;}
+  .st-ver-btn{font-size:10px;border:1px solid var(--border);padding:3px 10px;cursor:pointer;color:var(--text2);}
+  .st-ver-btn:hover{background:var(--hover);color:var(--text);}
+
+  .ann{background:var(--accent-s);border:1px solid rgba(124,107,245,0.15);padding:10px 14px;margin:10px 0 24px;font-size:11px;color:var(--text2);line-height:1.6;}
+  .ann strong{color:var(--accent);font-weight:600;}
+</style>
+</head>
+<body>
+<div class="page">
+
+<h1>Toolbar <span>Redesign</span></h1>
+<p class="sub">Status Bar + Command Palette + Settings Dialog 三个组件的问题修复和重设计</p>
+
+<!-- ===== STATUS BAR ===== -->
+<h2>Status Bar <span class="t">精简 + 实用</span></h2>
+<p class="desc">
+  <strong>问题：</strong>和 sidebar 信息重复（profile count、proxy address），⌘K 不可点击。<br>
+  <strong>方案：</strong>左侧保留标题，右侧精简为：活跃状态指示器 + session 计数 + 设置 + ⌘K（可点击）
+</p>
+
+<div class="frame">
+  <div class="sb">
+    <div class="sb-title">Agent Trace</div>
+
+    <!-- Active profile indicator (compact) -->
+    <div class="sb-pill">
+      <span class="sb-dot on"></span>
+      <span>:8888</span>
+    </div>
+
+    <div class="sb-sep"></div>
+
+    <span class="sb-count">12 sessions</span>
+
+    <div class="sb-sep"></div>
+
+    <div class="sb-btn" title="Settings">⚙</div>
+    <div class="sb-kbd" title="Command palette (⌘K)">⌘K</div>
+  </div>
+</div>
+
+<div class="ann">
+  <strong>变更：</strong>① 去掉 profile count badge（sidebar 已有）② proxy address 精简为端口号小药丸 + 绿点 ③ ⌘K 变成可点击的按钮 ④ 布局更紧凑
+</div>
+
+<!-- ===== COMMAND PALETTE ===== -->
+<h2>Command Palette <span class="t">修复白屏 + 重设计</span></h2>
+<p class="desc">
+  <strong>Bug：</strong>DialogHeader 在 DialogContent 外面，脱离 Portal 导致白屏。<br>
+  <strong>方案：</strong>修复 DOM 结构 + provider 颜色 badge + profile 显示端口和状态
+</p>
+
+<div class="frame">
+  <div class="cp-overlay">
+    <div class="cp">
+      <div class="cp-input">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <span>Search sessions, profiles, or actions…</span>
+      </div>
+      <div class="cp-group">
+        <div class="cp-gl">Sessions</div>
+        <div class="cp-item a">
+          <span class="cp-item-t">Fix authentication middleware</span>
+          <span class="pb an">Anthropic</span>
+        </div>
+        <div class="cp-item">
+          <span class="cp-item-t">Refactor database layer</span>
+          <span class="pb cx">Codex</span>
+        </div>
+        <div class="cp-item">
+          <span class="cp-item-t">Add unit tests for user service</span>
+          <span class="pb an">Anthropic</span>
+        </div>
+      </div>
+      <div class="cp-group">
+        <div class="cp-gl">Profiles</div>
+        <div class="cp-item">
+          <span class="sb-dot on" style="margin-right:2px;"></span>
+          <span class="cp-item-t">Anthropic Dev</span>
+          <span class="cp-item-r" style="font-family:'SF Mono',monospace;">:8888</span>
+          <span class="cp-item-r run">Running</span>
+        </div>
+        <div class="cp-item">
+          <span class="sb-dot off" style="margin-right:2px;"></span>
+          <span class="cp-item-t">Codex Dev</span>
+          <span class="cp-item-r" style="font-family:'SF Mono',monospace;">:8889</span>
+          <span class="cp-item-r">Start</span>
+        </div>
+      </div>
+      <div class="cp-group" style="border-top:1px solid var(--border);padding-top:4px;">
+        <div class="cp-gl">Actions</div>
+        <div class="cp-item">
+          <span class="cp-item-t" style="color:var(--red);">Clear history</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SETTINGS ===== -->
+<h2>Settings Dialog <span class="t">更宽 + 更实用</span></h2>
+<p class="desc">
+  <strong>问题：</strong>max-w-sm 太窄，无添加 profile 入口，Close 占整行。<br>
+  <strong>方案：</strong>加宽到 520px，header 自带关闭按钮，profile 行显示状态+端口+启停，底部加 Add Profile 入口。
+</p>
+
+<div class="frame">
+  <div class="st-overlay">
+    <div class="st">
+      <div class="st-header">
+        <div class="st-title">Settings</div>
+        <div class="st-close">✕</div>
+      </div>
+      <div class="st-body">
+        <div class="st-sec">
+          <div class="st-sec-t">Profiles</div>
+          <div class="st-pf">
+            <div class="st-pf-dot" style="background:var(--green);box-shadow:0 0 4px rgba(52,211,153,0.4);"></div>
+            <div class="st-pf-info">
+              <div class="st-pf-name">Anthropic Dev</div>
+              <div class="st-pf-url">https://api.anthropic.com</div>
+            </div>
+            <div class="st-pf-port">:8888</div>
+            <div class="st-pf-btn stop">Stop</div>
+          </div>
+          <div class="st-pf">
+            <div class="st-pf-dot" style="background:var(--text4);"></div>
+            <div class="st-pf-info">
+              <div class="st-pf-name">Codex Dev</div>
+              <div class="st-pf-url">https://chatgpt.com/backend-api/codex</div>
+            </div>
+            <div class="st-pf-port">:8889</div>
+            <div class="st-pf-btn">Start</div>
+          </div>
+          <div class="st-add">＋ Add Profile</div>
+        </div>
+
+        <div class="st-sec">
+          <div class="st-sec-t">Updates</div>
+          <div class="st-ver">
+            <div>
+              <div class="st-ver-info">Version 0.1.6</div>
+              <div class="st-ver-sub">You are on the latest version.</div>
+            </div>
+            <div class="st-ver-btn">Check</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="ann">
+  <strong>变更：</strong>① Dialog 加宽到 520px ② Header 右上角关闭按钮取代底部 Close 整行 ③ Profile 行用紧凑横排 ④ 新增 "+ Add Profile" 入口 ⑤ Updates 区域用单行卡片布局
+</div>
+
+</div>
+</body>
+</html>

@@ -1,23 +1,24 @@
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
-import { useSessionStore } from "../stores/session-store";
-import { useRequestStore } from "../stores/request-store";
-import { parseClaudeRequest } from "../lib/parse-claude-body";
+import { useTraceStore } from "../stores/trace-store";
+import { useProfileStore } from "../stores/profile-store";
 import { Code, PanelRight } from "lucide-react";
 import { cn } from "../lib/utils";
 import { stripXmlTags } from "../../../shared/strip-xml";
 
 export function ConversationHeader() {
-  const sessions = useSessionStore((s) => s.sessions);
-  const selectedSessionId = useSessionStore((s) => s.selectedSessionId);
-  const { requests, rawMode, inspectorOpen, toggleRawMode, toggleInspector } =
-    useRequestStore();
+  const trace = useTraceStore((state) => state.trace);
+  const rawMode = useTraceStore((state) => state.rawMode);
+  const inspectorOpen = useTraceStore((state) => state.inspectorOpen);
+  const toggleRawMode = useTraceStore((state) => state.toggleRawMode);
+  const toggleInspector = useTraceStore((state) => state.toggleInspector);
 
-  const session = sessions.find((s) => s.sessionId === selectedSessionId);
-  const lastRequest = requests[requests.length - 1];
-  const parsed = lastRequest ? parseClaudeRequest(lastRequest.requestBody) : null;
-  const model = parsed?.model ?? session?.model ?? null;
-  const title = session ? stripXmlTags(session.title) : "Conversation";
+  const profiles = useProfileStore((s) => s.profiles);
+  const statuses = useProfileStore((s) => s.statuses);
+  const runningProfile = profiles.find((p) => statuses[p.id]?.isRunning);
+
+  const model = trace?.exchanges.at(-1)?.model ?? null;
+  const title = trace ? stripXmlTags(trace.title) : "Conversation";
 
   return (
     <div className="flex items-center gap-2 border-b px-4 py-2 shrink-0">
@@ -26,6 +27,11 @@ export function ConversationHeader() {
         <Badge variant="secondary" className="text-[10px] px-1.5 py-0 shrink-0">
           {model}
         </Badge>
+      )}
+      {runningProfile && (
+        <span className="text-[10px] font-mono text-muted-foreground">
+          127.0.0.1:{statuses[runningProfile.id]?.port ?? runningProfile.localPort}
+        </span>
       )}
       <Button
         variant={rawMode ? "default" : "ghost"}

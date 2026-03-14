@@ -7,7 +7,7 @@ export function EmptyState() {
       <div className="space-y-1">
         <p className="text-sm font-medium">No sessions yet</p>
         <p className="text-xs text-muted-foreground">
-          Start listening to capture Claude Code requests
+          Start listening to capture agent traffic
         </p>
       </div>
     </div>

@@ -1,97 +1,138 @@
 import { ipcMain, type BrowserWindow } from "electron";
 import { IPC } from "../../shared/ipc-channels";
-import type { SettingsStore } from "../store/settings-store";
-import type { HistoryStore } from "../store/history-store";
-import type { SessionManager } from "../session/session-manager";
-import type { ProxyServer } from "../proxy/server";
-import { DEFAULT_PROXY_PORT } from "../../shared/defaults";
+import type {
+  ConnectionProfile,
+  SessionListFilter,
+} from "../../shared/contracts";
 import type { UpdateService } from "../update/update-service";
-import type { CaptureUpdatePayload } from "../../shared/types";
+import type { ExchangeQueryService } from "../queries/exchange-query-service";
+import type { SessionQueryService } from "../queries/session-query-service";
+import type { ProfileStore } from "../storage/profile-store";
+import type { ProxyManager } from "../transport/proxy-manager";
 
 export interface IpcDependencies {
-  settingsStore: SettingsStore;
-  historyStore: HistoryStore;
-  sessionManager: SessionManager;
-  getProxy: () => ProxyServer | null;
+  profileStore: Pick<ProfileStore, "getProfiles" | "saveProfiles">;
+  proxyManager: ProxyManager;
+  sessionQueryService: Pick<
+    SessionQueryService,
+    "listSessions" | "getSessionTrace"
+  >;
+  exchangeQueryService: Pick<ExchangeQueryService, "getExchangeDetail">;
+  clearHistory: () => void | Promise<void>;
   getMainWindow: () => BrowserWindow | null;
   updateService: UpdateService;
 }
 
+function broadcast(
+  getMainWindow: () => BrowserWindow | null,
+  channel: string,
+  payload: unknown,
+): void {
+  const win = getMainWindow();
+  if (!win) {
+    return;
+  }
+  win.webContents.send(channel, payload);
+}
+
 export function registerIpcHandlers(deps: IpcDependencies): () => void {
-  ipcMain.handle(IPC.GET_SETTINGS, () => {
-    return deps.settingsStore.getSettings();
+  ipcMain.handle(IPC.GET_PROFILES, () => {
+    return deps.profileStore.getProfiles();
   });
 
-  ipcMain.handle(IPC.SAVE_SETTINGS, (_event, input: { targetUrl: string }) => {
-    if (!input || typeof input.targetUrl !== "string") {
-      throw new Error("Invalid settings: targetUrl must be a string");
-    }
-    deps.settingsStore.saveSettings(input);
-    const proxy = deps.getProxy();
-    if (proxy) {
-      proxy.updateTargetUrl(input.targetUrl.trim());
-    }
-    return deps.settingsStore.getSettings();
-  });
-
-  ipcMain.handle(IPC.TOGGLE_LISTENING, async (_event, shouldListen: boolean) => {
-    const proxy = deps.getProxy();
-    if (!proxy) {
-      throw new Error("Proxy server not initialized");
+  ipcMain.handle(IPC.SAVE_PROFILES, async (_event, input: ConnectionProfile[]) => {
+    if (!Array.isArray(input)) {
+      throw new Error("Invalid profiles input");
     }
 
-    if (shouldListen) {
-      const info = await proxy.start();
-      return { isRunning: true, address: info.address, port: info.port };
-    } else {
-      await proxy.stop();
-      return { isRunning: false, address: null, port: DEFAULT_PROXY_PORT };
+    const previousProfiles = deps.profileStore.getProfiles();
+    const previousStatuses = deps.proxyManager.getStatuses();
+    deps.profileStore.saveProfiles(input);
+
+    const nextProfiles = new Map(input.map((profile) => [profile.id, profile]));
+    for (const previousProfile of previousProfiles) {
+      const nextProfile = nextProfiles.get(previousProfile.id);
+      const configChanged =
+        nextProfile &&
+        (nextProfile.localPort !== previousProfile.localPort ||
+          nextProfile.upstreamBaseUrl !== previousProfile.upstreamBaseUrl ||
+          nextProfile.providerId !== previousProfile.providerId);
+
+      if (!nextProfile || !nextProfile.enabled || configChanged) {
+        await deps.proxyManager.stopProfile(previousProfile.id);
+      }
     }
+
+    for (const profile of input) {
+      if (!profile.enabled) {
+        continue;
+      }
+
+      const wasRunning = previousStatuses[profile.id]?.isRunning === true;
+      if (wasRunning || profile.autoStart) {
+        await deps.proxyManager.startProfile(profile.id);
+      }
+    }
+
+    broadcast(deps.getMainWindow, IPC.PROFILE_STATUS_CHANGED, {
+      statuses: deps.proxyManager.getStatuses(),
+    });
+
+    return deps.profileStore.getProfiles();
   });
 
-  ipcMain.handle(IPC.GET_PROXY_STATUS, () => {
-    const proxy = deps.getProxy();
-    return {
-      isRunning: proxy?.isRunning() ?? false,
-    };
+  ipcMain.handle(IPC.START_PROFILE, async (_event, profileId: string) => {
+    if (typeof profileId !== "string") {
+      throw new Error("Invalid profileId");
+    }
+
+    await deps.proxyManager.startProfile(profileId);
+    broadcast(deps.getMainWindow, IPC.PROFILE_STATUS_CHANGED, {
+      statuses: deps.proxyManager.getStatuses(),
+    });
   });
 
-  ipcMain.handle(IPC.LIST_SESSIONS, () => {
-    return deps.historyStore.listSessions();
+  ipcMain.handle(IPC.STOP_PROFILE, async (_event, profileId: string) => {
+    if (typeof profileId !== "string") {
+      throw new Error("Invalid profileId");
+    }
+
+    await deps.proxyManager.stopProfile(profileId);
+    broadcast(deps.getMainWindow, IPC.PROFILE_STATUS_CHANGED, {
+      statuses: deps.proxyManager.getStatuses(),
+    });
   });
 
-  ipcMain.handle(IPC.GET_SESSION_REQUESTS, (_event, sessionId: string) => {
+  ipcMain.handle(IPC.GET_PROFILE_STATUSES, () => {
+    return deps.proxyManager.getStatuses();
+  });
+
+  ipcMain.handle(IPC.LIST_SESSIONS, (_event, filter?: SessionListFilter) => {
+    if (filter != null && typeof filter !== "object") {
+      throw new Error("Invalid filter parameter");
+    }
+    return deps.sessionQueryService.listSessions(filter);
+  });
+
+  ipcMain.handle(IPC.GET_SESSION_TRACE, (_event, sessionId: string) => {
     if (typeof sessionId !== "string") {
       throw new Error("Invalid sessionId");
     }
-    return deps.historyStore.listRequests(sessionId);
+    return deps.sessionQueryService.getSessionTrace(sessionId);
   });
 
-  ipcMain.handle(IPC.GET_REQUEST_DETAIL, (_event, requestId: string) => {
-    if (typeof requestId !== "string") {
-      throw new Error("Invalid requestId");
+  ipcMain.handle(IPC.GET_EXCHANGE_DETAIL, (_event, exchangeId: string) => {
+    if (typeof exchangeId !== "string") {
+      throw new Error("Invalid exchangeId");
     }
-    return deps.historyStore.getRequest(requestId);
+    return deps.exchangeQueryService.getExchangeDetail(exchangeId);
   });
 
-  ipcMain.handle(IPC.CLEAR_DATA, () => {
-    deps.historyStore.clearAll();
-    const win = deps.getMainWindow();
-    if (win) {
-      const payload: CaptureUpdatePayload = {
-        sessions: [],
-        updatedSessionId: null,
-        updatedRequestId: null,
-      };
-      win.webContents.send(IPC.CAPTURE_UPDATED, payload);
-    }
-  });
-
-  ipcMain.handle(IPC.SEARCH, (_event, query: string) => {
-    if (typeof query !== "string") {
-      throw new Error("Invalid search query");
-    }
-    return deps.historyStore.search(query);
+  ipcMain.handle(IPC.CLEAR_HISTORY, async () => {
+    await deps.clearHistory();
+    broadcast(deps.getMainWindow, IPC.TRACE_RESET, {
+      clearedAt: new Date().toISOString(),
+    });
   });
 
   ipcMain.handle(IPC.GET_UPDATE_STATE, () => {
@@ -111,11 +152,7 @@ export function registerIpcHandlers(deps: IpcDependencies): () => void {
   });
 
   const unsubscribe = deps.updateService.subscribe((state) => {
-    const win = deps.getMainWindow();
-    if (!win) {
-      return;
-    }
-    win.webContents.send(IPC.UPDATE_STATE_CHANGED, state);
+    broadcast(deps.getMainWindow, IPC.UPDATE_STATE_CHANGED, state);
   });
 
   return () => {

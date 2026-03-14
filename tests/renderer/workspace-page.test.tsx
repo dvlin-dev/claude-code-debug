@@ -1,17 +1,29 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { SessionSidebar } from "../../src/renderer/src/components/session-sidebar";
 import { EmptyState } from "../../src/renderer/src/components/empty-state";
 import { SessionItem } from "../../src/renderer/src/components/session-item";
+import { ConversationView } from "../../src/renderer/src/components/conversation-view";
+import { InspectorPanel } from "../../src/renderer/src/components/inspector-panel";
 import { useSessionStore } from "../../src/renderer/src/stores/session-store";
+import { useTraceStore } from "../../src/renderer/src/stores/trace-store";
 import { stripXmlTags } from "../../src/shared/strip-xml";
-import type { SessionSummary } from "../../src/shared/types";
+import type { SessionListItemVM } from "../../src/shared/contracts";
 
 // Mock the electron API
 vi.mock("../../src/renderer/src/lib/electron-api", () => ({
   getElectronAPI: () => ({
     listSessions: vi.fn().mockResolvedValue([]),
-    getProxyStatus: vi.fn().mockResolvedValue({ isRunning: false }),
+    getSessionTrace: vi.fn().mockResolvedValue({
+      sessionId: "s1",
+      providerId: "anthropic",
+      providerLabel: "Anthropic",
+      profileId: "anthropic-dev",
+      title: "Trace",
+      timeline: { messages: [] },
+      exchanges: [],
+    }),
+    getExchangeDetail: vi.fn().mockResolvedValue(null),
     getUpdateState: vi.fn().mockResolvedValue({
       status: "idle",
       currentVersion: "0.1.2",
@@ -35,12 +47,14 @@ describe("EmptyState", () => {
 });
 
 describe("SessionItem", () => {
-  const mockSession: SessionSummary = {
+  const mockSession: SessionListItemVM = {
     sessionId: "s1",
+    providerId: "anthropic",
+    providerLabel: "Anthropic",
+    profileId: "anthropic-dev",
     title: "Fix authentication bug",
-    startedAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
-    requestCount: 5,
+    exchangeCount: 5,
     model: "claude-opus-4-6",
   };
 
@@ -66,7 +80,7 @@ describe("SessionItem", () => {
     expect(screen.getByText("claude-opus-4-6")).toBeInTheDocument();
   });
 
-  it("displays request count", () => {
+  it("displays provider and exchange count", () => {
     render(
       <SessionItem
         session={mockSession}
@@ -74,7 +88,8 @@ describe("SessionItem", () => {
         onClick={() => {}}
       />,
     );
-    expect(screen.getByText(/5 req/)).toBeInTheDocument();
+    expect(screen.getByText("Anthropic")).toBeInTheDocument();
+    expect(screen.getByText("5")).toBeInTheDocument();
   });
 });
 
@@ -84,6 +99,14 @@ describe("SessionSidebar", () => {
       sessions: [],
       selectedSessionId: null,
       searchQuery: "",
+    });
+    useTraceStore.setState({
+      trace: null,
+      selectedExchangeId: null,
+      selectedExchangeDetail: null,
+      exchangeDetails: {},
+      inspectorOpen: false,
+      rawMode: false,
     });
   });
 
@@ -104,10 +127,12 @@ describe("SessionSidebar", () => {
       sessions: [
         {
           sessionId: "s1",
+          providerId: "anthropic",
+          providerLabel: "Anthropic",
+          profileId: "anthropic-dev",
           title: "Test session",
-          startedAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
-          requestCount: 3,
+          exchangeCount: 3,
           model: "claude-opus-4-6",
         },
       ],
@@ -115,6 +140,54 @@ describe("SessionSidebar", () => {
 
     render(<SessionSidebar />);
     expect(screen.getByText("Test session")).toBeInTheDocument();
+  });
+
+  it("renders conversation timeline from trace store", () => {
+    const exchanges = [
+      {
+        exchangeId: "exchange-1",
+        providerId: "anthropic" as const,
+        providerLabel: "Anthropic",
+        method: "POST",
+        path: "/v1/messages",
+        statusCode: 200,
+        durationMs: 101,
+        model: "claude-opus-4-1",
+      },
+    ];
+
+    render(
+      <>
+        <ConversationView
+          timeline={{
+            messages: [
+              { role: "user", blocks: [{ type: "text", text: "Hello" }] },
+              {
+                role: "assistant",
+                blocks: [{ type: "text", text: "Hi there" }],
+              },
+            ],
+          }}
+        />
+        <InspectorPanel
+          exchanges={exchanges}
+          selectedExchangeId="exchange-1"
+          onSelectExchange={() => {}}
+          inspector={{
+            sections: [
+              {
+                kind: "overview",
+                title: "Overview",
+                items: [{ label: "Model", value: "claude-opus-4-1" }],
+              },
+            ],
+          }}
+        />
+      </>,
+    );
+
+    expect(screen.getByText("Hi there")).toBeInTheDocument();
+    expect(screen.getByText("claude-opus-4-1")).toBeInTheDocument();
   });
 });
 
@@ -140,12 +213,14 @@ describe("stripXmlTags", () => {
   });
 
   it("SessionItem strips XML tags from title", () => {
-    const session: SessionSummary = {
+    const session: SessionListItemVM = {
       sessionId: "s2",
+      providerId: "anthropic",
+      providerLabel: "Anthropic",
+      profileId: "anthropic-dev",
       title: "<system-reminder>Fix the bug</system-reminder>",
-      startedAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      requestCount: 1,
+      exchangeCount: 1,
       model: null,
     };
 

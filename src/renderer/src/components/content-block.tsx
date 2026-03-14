@@ -1,16 +1,10 @@
 import { useState } from "react";
 import { cn } from "../lib/utils";
 import { ChevronRight } from "lucide-react";
+import type { NormalizedMessageBlock } from "../../../shared/contracts";
 
 interface ContentBlockProps {
-  block: {
-    type: string;
-    text?: string;
-    name?: string;
-    input?: unknown;
-    content?: unknown;
-    id?: string;
-  };
+  block: NormalizedMessageBlock;
 }
 
 export function ContentBlock({ block }: ContentBlockProps) {
@@ -47,23 +41,23 @@ export function ContentBlock({ block }: ContentBlockProps) {
     );
   }
 
-  if (block.type === "thinking") {
+  if (block.type === "reasoning") {
     return (
       <div
         className={cn(
-          "rounded-md bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800",
+          "bg-fuchsia-50 dark:bg-fuchsia-950/30 border border-fuchsia-200 dark:border-fuchsia-800",
           "cursor-pointer",
         )}
         onClick={() => setExpanded(!expanded)}
       >
-        <div className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-purple-700 dark:text-purple-300">
+        <div className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-fuchsia-700 dark:text-fuchsia-300">
           <ChevronRight
             className={cn("h-3 w-3 transition-transform", expanded && "rotate-90")}
           />
-          Thinking
+          💭 Thinking
         </div>
         {expanded && (
-          <div className="px-3 pb-2 text-sm whitespace-pre-wrap text-purple-900 dark:text-purple-200">
+          <div className="px-3 pb-2 text-sm whitespace-pre-wrap text-fuchsia-900 dark:text-fuchsia-200">
             {block.text}
           </div>
         )}
@@ -71,44 +65,60 @@ export function ContentBlock({ block }: ContentBlockProps) {
     );
   }
 
-  if (block.type === "tool_use") {
+  if (block.type === "tool-call") {
     return (
       <div
-        className="rounded-md border-l-2 border-blue-500 bg-blue-50 dark:bg-blue-950/20 cursor-pointer"
+        className="border-l-2 border-blue-500 bg-blue-50 dark:bg-blue-950/20 cursor-pointer"
         onClick={() => setExpanded(!expanded)}
       >
         <div className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-blue-700 dark:text-blue-300">
           <ChevronRight
             className={cn("h-3 w-3 transition-transform", expanded && "rotate-90")}
           />
-          {block.name ?? "tool_use"}
+          {block.name}
         </div>
         {expanded && (
           <pre className="px-3 pb-2 text-xs overflow-auto">
             {JSON.stringify(block.input, null, 2)}
           </pre>
         )}
+        {block.callId && (
+          <div className="mt-1 text-[9px] font-mono text-muted-foreground/50 truncate">
+            {block.callId}
+          </div>
+        )}
       </div>
     );
   }
 
-  if (block.type === "tool_result") {
+  if (block.type === "tool-result") {
     const content =
       typeof block.content === "string"
         ? block.content
         : JSON.stringify(block.content, null, 2);
     const isLong = content.length > 200;
+    const hasError = !!block.isError;
 
     return (
       <div
-        className="rounded-md border-l-2 border-green-500 bg-green-50 dark:bg-green-950/20 cursor-pointer"
+        className={cn(
+          "border-l-2 cursor-pointer",
+          hasError
+            ? "border-red-500 bg-red-50 dark:bg-red-950/20"
+            : "border-green-500 bg-green-50 dark:bg-green-950/20",
+        )}
         onClick={() => setExpanded(!expanded)}
       >
-        <div className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-green-700 dark:text-green-300">
+        <div className={cn(
+          "flex items-center gap-1 px-3 py-1.5 text-xs font-medium",
+          hasError
+            ? "text-red-700 dark:text-red-300"
+            : "text-green-700 dark:text-green-300",
+        )}>
           <ChevronRight
             className={cn("h-3 w-3 transition-transform", expanded && "rotate-90")}
           />
-          Result
+          {hasError ? "Error" : "Result"}
         </div>
         {expanded && (
           <pre className="px-3 pb-2 text-xs overflow-auto whitespace-pre-wrap">

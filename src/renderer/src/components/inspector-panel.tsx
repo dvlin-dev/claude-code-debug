@@ -1,50 +1,82 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ScrollArea } from "./ui/scroll-area";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { RequestItem } from "./request-item";
-import { useRequestStore } from "../stores/request-store";
-import { parseClaudeRequest } from "../lib/parse-claude-body";
-import { ChevronRight, X } from "lucide-react";
+import type {
+  ExchangeListItemVM,
+  InspectorDocument,
+  InspectorSection,
+} from "../../../shared/contracts";
+import { useTraceStore } from "../stores/trace-store";
+import { X } from "lucide-react";
 import { cn } from "../lib/utils";
 
-type InspectorTab = "requests" | "system" | "tools" | "raw-request" | "raw-response";
+interface InspectorPanelProps {
+  inspector?: InspectorDocument | null;
+  exchanges?: ExchangeListItemVM[];
+  selectedExchangeId?: string | null;
+  onSelectExchange?: (id: string | null) => void | Promise<void>;
+  onClose?: () => void;
+}
 
-export function InspectorPanel() {
-  const { requests, selectedRequestId, selectRequest, toggleInspector } =
-    useRequestStore();
-  const [activeTab, setActiveTab] = useState<InspectorTab>("requests");
+export function InspectorPanel({
+  inspector,
+  exchanges,
+  selectedExchangeId,
+  onSelectExchange,
+  onClose,
+}: InspectorPanelProps) {
+  const trace = useTraceStore((state) => state.trace);
+  const selectedDetail = useTraceStore((state) => state.selectedExchangeDetail);
+  const exchangeDetails = useTraceStore((state) => state.exchangeDetails);
+  const storeSelectedExchangeId = useTraceStore((state) => state.selectedExchangeId);
+  const storeSelectExchange = useTraceStore((state) => state.selectExchange);
+  const toggleInspector = useTraceStore((state) => state.toggleInspector);
+  const activeSelectedExchangeId =
+    selectedExchangeId ?? storeSelectedExchangeId ?? null;
+  const fallbackDetail =
+    activeSelectedExchangeId ? exchangeDetails[activeSelectedExchangeId] ?? null : null;
+  const activeExchanges = exchanges ?? trace?.exchanges ?? [];
+  const resolvedInspector =
+    inspector ?? selectedDetail?.inspector ?? fallbackDetail?.inspector ?? null;
+  const handleSelectExchange = onSelectExchange ?? storeSelectExchange;
+  const [activeTab, setActiveTab] = useState<string>("requests");
 
-  // Use selected request or fall back to last request
-  const activeRequest =
-    requests.find((r) => r.requestId === selectedRequestId) ??
-    requests[requests.length - 1] ??
-    null;
+  const sectionTabs = useMemo(
+    () =>
+      resolvedInspector?.sections.map((section, index) => ({
+        id: `section-${index}`,
+        label: section.title,
+        section,
+      })) ?? [],
+    [resolvedInspector],
+  );
+
+  useEffect(() => {
+    setActiveTab(sectionTabs[0]?.id ?? "requests");
+  }, [sectionTabs]);
 
   return (
     <div className="flex h-full flex-col border-l">
       <div className="flex items-center justify-between border-b px-3 py-2 shrink-0">
         <span className="text-xs font-medium">Inspector</span>
-        <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={toggleInspector}>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-6 w-6 p-0"
+          onClick={onClose ?? toggleInspector}
+        >
           <X className="h-3.5 w-3.5" />
         </Button>
       </div>
 
-      {/* Tab bar */}
       <div className="flex gap-1 border-b px-2 py-1.5 shrink-0 overflow-x-auto">
-        {(
-          [
-            ["requests", `Requests (${requests.length})`],
-            ["system", "System"],
-            ["tools", "Tools"],
-            ["raw-request", "Raw Req"],
-            ["raw-response", "Raw Res"],
-          ] as const
-        ).map(([id, label]) => (
+        {sectionTabs.map(({ id, label }) => (
           <button
             key={id}
             className={cn(
-              "px-2 py-1 text-[11px] rounded-md whitespace-nowrap transition-colors",
+              "px-2 py-1 text-[11px] whitespace-nowrap transition-colors",
               activeTab === id
                 ? "bg-accent text-accent-foreground font-medium"
                 : "text-muted-foreground hover:text-foreground hover:bg-accent/50",
@@ -54,53 +86,57 @@ export function InspectorPanel() {
             {label}
           </button>
         ))}
+        <button
+          className={cn(
+            "px-2 py-1 text-[11px] whitespace-nowrap transition-colors",
+            activeTab === "requests"
+              ? "bg-accent text-accent-foreground font-medium"
+              : "text-muted-foreground hover:text-foreground hover:bg-accent/50",
+          )}
+          onClick={() => setActiveTab("requests")}
+        >
+          {`Requests (${activeExchanges.length})`}
+        </button>
       </div>
 
       <div className="flex-1 overflow-hidden">
         {activeTab === "requests" && (
           <RequestListSection
-            requests={requests}
-            selectedRequestId={selectedRequestId}
-            onSelect={selectRequest}
+            requests={activeExchanges}
+            selectedExchangeId={activeSelectedExchangeId}
+            onSelect={handleSelectExchange}
           />
         )}
-        {activeTab === "system" && activeRequest && (
-          <SystemSection request={activeRequest} />
-        )}
-        {activeTab === "tools" && activeRequest && (
-          <ToolsSection request={activeRequest} />
-        )}
-        {activeTab === "raw-request" && activeRequest && (
-          <RawSection content={activeRequest.requestBody} />
-        )}
-        {activeTab === "raw-response" && activeRequest && (
-          <RawSection content={activeRequest.responseBody} />
+        {activeTab !== "requests" && (
+          <InspectorSectionView
+            section={
+              sectionTabs.find((entry) => entry.id === activeTab)?.section ?? null
+            }
+          />
         )}
       </div>
     </div>
   );
 }
 
-// --- Sub-sections ---
-
 function RequestListSection({
   requests,
-  selectedRequestId,
+  selectedExchangeId,
   onSelect,
 }: {
-  requests: ReturnType<typeof useRequestStore.getState>["requests"];
-  selectedRequestId: string | null;
-  onSelect: (id: string | null) => void;
+  requests: ExchangeListItemVM[];
+  selectedExchangeId: string | null;
+  onSelect: (id: string | null) => void | Promise<void>;
 }) {
   return (
     <ScrollArea className="h-full">
       <div className="space-y-0.5 p-2">
         {requests.map((req) => (
           <RequestItem
-            key={req.requestId}
+            key={req.exchangeId}
             request={req}
-            isSelected={req.requestId === selectedRequestId}
-            onClick={() => onSelect(req.requestId)}
+            isSelected={req.exchangeId === selectedExchangeId}
+            onClick={() => void onSelect(req.exchangeId)}
           />
         ))}
       </div>
@@ -108,117 +144,142 @@ function RequestListSection({
   );
 }
 
-function SystemSection({ request }: { request: { requestBody: string | null } }) {
-  const parsed = parseClaudeRequest(request.requestBody);
-  const system = parsed?.system;
+function statusBadgeColor(value: string): string {
+  if (value.startsWith("2")) return "text-emerald-500 bg-emerald-500/10";
+  if (value.startsWith("4")) return "text-orange-500 bg-orange-500/10";
+  if (value.startsWith("5")) return "text-red-500 bg-red-500/10";
+  return "text-muted-foreground bg-muted";
+}
 
-  if (!system) {
+function providerBadgeColor(value: string): string {
+  if (value === "Anthropic") return "bg-orange-500/10 text-orange-500";
+  if (value === "Codex") return "bg-emerald-500/10 text-emerald-500";
+  return "text-muted-foreground bg-muted";
+}
+
+function OverviewSection({
+  items,
+}: {
+  items: Array<{ label: string; value: string }>;
+}) {
+  const tokenItems = items.filter((item) => item.label.includes("Tokens"));
+  const otherItems = items.filter((item) => !item.label.includes("Tokens"));
+
+  return (
+    <ScrollArea className="h-full">
+      <div className="p-3 space-y-2">
+        {otherItems.map((item) => (
+          <div
+            key={item.label}
+            className="flex items-center justify-between gap-3 border px-3 py-2 text-sm"
+          >
+            <span className="text-muted-foreground">{item.label}</span>
+            {item.label === "Status" ? (
+              <span
+                className={cn(
+                  "font-medium px-1.5 py-0.5 text-xs",
+                  statusBadgeColor(item.value),
+                )}
+              >
+                {item.value}
+              </span>
+            ) : item.label === "Provider" ? (
+              <span
+                className={cn(
+                  "font-medium px-1.5 py-0.5 text-xs",
+                  providerBadgeColor(item.value),
+                )}
+              >
+                {item.value}
+              </span>
+            ) : (
+              <span className="font-medium">{item.value}</span>
+            )}
+          </div>
+        ))}
+        {tokenItems.length > 0 && (
+          <div className="grid grid-cols-2 gap-2 mt-3">
+            {tokenItems.map((item) => (
+              <div
+                key={item.label}
+                className="border border-border bg-muted/30 p-2.5"
+              >
+                <div className="text-base font-bold font-mono tabular-nums">
+                  {item.value}
+                </div>
+                <div className="text-[10px] text-muted-foreground mt-0.5">
+                  {item.label}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </ScrollArea>
+  );
+}
+
+function InspectorSectionView({
+  section,
+}: {
+  section: InspectorSection | null;
+}) {
+  if (!section) {
     return (
       <div className="flex items-center justify-center p-8 text-sm text-muted-foreground">
-        No system prompt
+        No inspector section
       </div>
     );
   }
 
-  if (typeof system === "string") {
-    const approxTokens = Math.round(system.length / 4);
+  if (section.kind === "overview") {
+    return <OverviewSection items={section.items} />;
+  }
+
+  if (section.kind === "text") {
     return (
       <ScrollArea className="h-full">
-        <div className="p-3 space-y-2">
+        <pre className="p-3 text-xs whitespace-pre-wrap">{section.text}</pre>
+      </ScrollArea>
+    );
+  }
+
+  if (section.kind === "tool-list") {
+    return (
+      <ScrollArea className="h-full">
+        <div className="space-y-2 p-3">
           <Badge variant="secondary" className="text-[10px]">
-            ~{approxTokens.toLocaleString()} tokens
+            {section.tools.length} tools
           </Badge>
-          <pre className="text-xs whitespace-pre-wrap">{system}</pre>
+          {section.tools.map((tool) => (
+            <div key={tool.name} className="border px-3 py-2">
+              <div className="font-mono text-xs font-medium">{tool.name}</div>
+              {tool.description ? (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {tool.description}
+                </p>
+              ) : null}
+              <pre className="mt-2 text-[11px] overflow-auto">
+                {JSON.stringify(tool.inputSchema, null, 2)}
+              </pre>
+            </div>
+          ))}
         </div>
       </ScrollArea>
     );
   }
 
-  const fullText = system.map((block) => block.text).join("");
-  const approxTokens = Math.round(fullText.length / 4);
-
-  return (
-    <ScrollArea className="h-full">
-      <div className="p-3 space-y-2">
-        <Badge variant="secondary" className="text-[10px]">
-          ~{approxTokens.toLocaleString()} tokens
-        </Badge>
-        {system.map((block, i) => (
-          <div key={i} className="space-y-1">
-            <div className="flex items-center gap-2">
-              <Badge variant="outline" className="text-[10px]">
-                {block.type}
-              </Badge>
-              {block.cache_control != null && (
-                <Badge variant="outline" className="text-[10px] text-orange-600">
-                  cached
-                </Badge>
-              )}
-            </div>
-            <pre className="text-xs whitespace-pre-wrap">{block.text}</pre>
-          </div>
-        ))}
-      </div>
-    </ScrollArea>
-  );
-}
-
-function ToolsSection({ request }: { request: { requestBody: string | null } }) {
-  const parsed = parseClaudeRequest(request.requestBody);
-  const tools = parsed?.tools;
-
-  if (!tools || tools.length === 0) {
+  if (section.kind === "json") {
     return (
-      <div className="flex items-center justify-center p-8 text-sm text-muted-foreground">
-        No tools defined
-      </div>
+      <ScrollArea className="h-full">
+        <pre className="p-3 text-[11px] font-mono whitespace-pre-wrap break-all">
+          {JSON.stringify(section.json, null, 2)}
+        </pre>
+      </ScrollArea>
     );
   }
 
-  return (
-    <ScrollArea className="h-full">
-      <div className="space-y-1 p-3">
-        <Badge variant="secondary" className="text-[10px] mb-2">
-          {tools.length} tools
-        </Badge>
-        {tools.map((tool, i) => (
-          <ToolItem key={i} tool={tool} />
-        ))}
-      </div>
-    </ScrollArea>
-  );
-}
-
-function ToolItem({
-  tool,
-}: {
-  tool: { name: string; description: string; input_schema: unknown };
-}) {
-  const [expanded, setExpanded] = useState(false);
-
-  return (
-    <div
-      className="rounded-md border px-2 py-1.5 cursor-pointer hover:bg-accent transition-colors"
-      onClick={() => setExpanded(!expanded)}
-    >
-      <div className="flex items-center gap-2">
-        <ChevronRight
-          className={cn("h-3 w-3 transition-transform shrink-0", expanded && "rotate-90")}
-        />
-        <span className="text-xs font-medium font-mono truncate">{tool.name}</span>
-      </div>
-      {tool.description && (
-        <p className="text-[11px] text-muted-foreground mt-0.5 pl-5 line-clamp-2">
-          {tool.description}
-        </p>
-      )}
-      {expanded && (
-        <pre className="mt-1 pl-5 text-[11px] overflow-auto">
-          {JSON.stringify(tool.input_schema, null, 2)}
-        </pre>
-      )}
-    </div>
-  );
+  return <RawSection content={section.content} />;
 }
 
 function RawSection({ content }: { content: string | null }) {
@@ -234,7 +295,7 @@ function RawSection({ content }: { content: string | null }) {
   try {
     displayContent = JSON.stringify(JSON.parse(content), null, 2);
   } catch {
-    // Not JSON, show as-is
+    // ignore non-json payloads
   }
 
   return (

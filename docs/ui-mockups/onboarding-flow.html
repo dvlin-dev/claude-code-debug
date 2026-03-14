@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Onboarding Flow — Interactive Mockup</title>
+<style>
+  :root {
+    --bg: #0f0f0f; --surface: #171717; --elevated: #1e1e1e; --hover: #262626;
+    --border: #2a2a2a; --border-s: #222; --text: #e5e5e5; --text2: #999; --text3: #666; --text4: #444;
+    --accent: #7c6bf5; --accent-s: rgba(124,107,245,0.12);
+    --green: #34d399; --green-s: rgba(52,211,153,0.12);
+    --blue: #60a5fa; --blue-s: rgba(96,165,250,0.12);
+    --orange: #fb923c; --orange-s: rgba(251,146,60,0.12);
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background:#050505; color:var(--text); -webkit-font-smoothing:antialiased; }
+  code { font-family: 'SF Mono','Menlo', monospace; font-size:0.88em; background:var(--elevated); padding:1px 5px; border-radius:3px; }
+
+  .page { max-width:800px; margin:0 auto; padding:48px 32px; }
+  h1 { font-size:28px; font-weight:700; letter-spacing:-0.03em; margin-bottom:6px; }
+  h1 span { color:var(--accent); }
+  .sub { color:var(--text2); font-size:14px; margin-bottom:48px; }
+  h2 { font-size:18px; font-weight:600; margin:40px 0 6px; letter-spacing:-0.01em; }
+  h2 .t { display:inline-block; background:var(--accent-s); color:var(--accent); font-size:9px; font-weight:700; padding:2px 6px; border-radius:3px; margin-left:6px; vertical-align:middle; text-transform:uppercase; letter-spacing:0.05em; }
+  .desc { color:var(--text2); font-size:13px; margin-bottom:16px; max-width:640px; line-height:1.6; }
+  hr { border:none; border-top:1px solid var(--border); margin:40px 0; }
+
+  /* Frame */
+  .frame { background:var(--bg); border:1px solid var(--border); border-radius:10px; overflow:hidden; box-shadow:0 16px 40px rgba(0,0,0,0.5); margin:16px 0 32px; }
+  .tb { height:36px; background:var(--surface); border-bottom:1px solid var(--border); display:flex; align-items:center; padding:0 14px; gap:7px; }
+  .d { width:11px; height:11px; border-radius:50%; } .d.r{background:#ff5f57;} .d.y{background:#febc2e;} .d.g{background:#28c840;}
+  .tb-t { flex:1; text-align:center; color:var(--text4); font-size:11px; font-weight:500; }
+
+  /* Common */
+  .center { display:flex; flex-direction:column; align-items:center; text-align:center; padding:40px 48px; }
+  .icon { width:56px; height:56px; border-radius:14px; background:linear-gradient(135deg,var(--accent),#a78bfa); display:flex; align-items:center; justify-content:center; font-size:24px; margin-bottom:16px; box-shadow:0 4px 16px rgba(124,107,245,0.25); }
+  .title { font-size:22px; font-weight:700; letter-spacing:-0.02em; margin-bottom:4px; }
+  .hint { font-size:13px; color:var(--text2); margin-bottom:24px; max-width:400px; }
+
+  /* Provider cards */
+  .cards { display:flex; gap:10px; justify-content:center; margin-bottom:24px; }
+  .card { width:160px; padding:14px; border-radius:8px; border:1px solid var(--border); background:var(--surface); text-align:left; cursor:pointer; transition:all 0.15s; }
+  .card:hover { border-color:var(--text3); }
+  .card.s { border-color:var(--accent); background:var(--accent-s); box-shadow:0 0 0 1px var(--accent); }
+  .card-emoji { font-size:20px; margin-bottom:6px; }
+  .card-name { font-size:13px; font-weight:600; margin-bottom:2px; }
+  .card-desc { font-size:10px; color:var(--text3); line-height:1.4; }
+
+  /* Config panel */
+  .config { width:100%; max-width:480px; margin:0 auto; text-align:left; }
+  .config-section { margin-bottom:16px; }
+  .config-label { font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:0.06em; color:var(--text3); margin-bottom:6px; display:flex; align-items:center; gap:6px; }
+  .config-label .num { display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px; border-radius:50%; background:var(--accent); color:white; font-size:9px; font-weight:700; }
+
+  .input-row { display:flex; align-items:center; gap:8px; }
+  .input { flex:1; height:34px; padding:0 10px; border-radius:6px; background:var(--elevated); border:1px solid var(--border); color:var(--text); font-size:12px; font-family:'SF Mono','Menlo',monospace; outline:none; }
+  .input:focus { border-color:var(--accent); box-shadow:0 0 0 1px var(--accent); }
+  .input.readonly { color:var(--text2); cursor:default; }
+  .copy-btn { height:34px; padding:0 10px; border-radius:6px; background:var(--elevated); border:1px solid var(--border); color:var(--text2); font-size:11px; cursor:pointer; white-space:nowrap; display:flex; align-items:center; gap:4px; }
+  .copy-btn:hover { background:var(--hover); color:var(--text); }
+
+  .arrow-hint { display:flex; align-items:center; justify-content:center; gap:8px; margin:12px 0; font-size:11px; color:var(--text3); }
+  .arrow-hint .arrow { font-size:16px; color:var(--accent); }
+
+  .flow-diagram { display:flex; align-items:center; justify-content:center; gap:6px; margin:16px 0 20px; font-size:11px; color:var(--text2); }
+  .flow-box { padding:5px 10px; border-radius:4px; border:1px solid var(--border); background:var(--surface); font-family:'SF Mono',monospace; font-size:10px; }
+  .flow-box.highlight { border-color:var(--accent); background:var(--accent-s); color:var(--accent); }
+  .flow-arrow { color:var(--text4); font-size:14px; }
+
+  .btn { padding:8px 20px; border-radius:6px; background:var(--accent); color:white; font-size:12px; font-weight:600; border:none; cursor:pointer; }
+  .btn:hover { filter:brightness(1.1); }
+  .btn:disabled { opacity:0.5; cursor:default; }
+  .btn-ghost { padding:8px 12px; border-radius:6px; background:transparent; border:1px solid var(--border); color:var(--text2); font-size:11px; cursor:pointer; }
+  .btn-ghost:hover { background:var(--hover); color:var(--text); }
+
+  .actions { display:flex; align-items:center; justify-content:center; gap:10px; margin-top:20px; }
+
+  /* Step indicator */
+  .steps { display:flex; justify-content:center; gap:6px; margin-bottom:20px; }
+  .step-dot { width:6px; height:6px; border-radius:50%; background:var(--text4); }
+  .step-dot.a { background:var(--accent); width:18px; border-radius:3px; }
+
+  /* Shell block */
+  .shell { background:#0a0a0a; border:1px solid var(--border); border-radius:6px; padding:10px 12px; margin-top:8px; position:relative; }
+  .shell-label { font-size:9px; color:var(--text4); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:4px; }
+  .shell-code { font-family:'SF Mono','Menlo',monospace; font-size:11px; color:var(--green); line-height:1.6; }
+  .shell-copy { position:absolute; top:8px; right:8px; font-size:10px; color:var(--text4); cursor:pointer; padding:2px 6px; border-radius:3px; }
+  .shell-copy:hover { background:var(--hover); color:var(--text2); }
+
+  /* Annotation */
+  .ann { background:var(--accent-s); border:1px solid rgba(124,107,245,0.15); border-radius:6px; padding:10px 14px; margin:12px 0; font-size:11px; color:var(--text2); line-height:1.6; }
+  .ann strong { color:var(--accent); font-weight:600; }
+</style>
+</head>
+<body>
+<div class="page">
+
+<h1>Onboarding <span>Flow</span></h1>
+<p class="sub">三步完成：选 provider → 填 URL → 拿到本地地址去配客户端</p>
+
+<!-- ========== SCREEN 1: SELECT PROVIDER ========== -->
+<h2>Step 1 — 选择 Provider <span class="t">选卡片</span></h2>
+<p class="desc">首屏只做一件事：选 provider 类型。不需要填任何东西。</p>
+
+<div class="frame">
+  <div class="tb"><div class="d r"></div><div class="d y"></div><div class="d g"></div><div class="tb-t">Agent Trace</div></div>
+  <div class="center">
+    <div class="steps"><div class="step-dot a"></div><div class="step-dot"></div><div class="step-dot"></div></div>
+    <div class="icon">🔍</div>
+    <div class="title">Welcome to Agent Trace</div>
+    <div class="hint">选择你要调试的 agent 类型</div>
+
+    <div class="cards">
+      <div class="card s">
+        <div class="card-emoji">🟠</div>
+        <div class="card-name">Claude Code</div>
+        <div class="card-desc">Anthropic Messages API</div>
+      </div>
+      <div class="card">
+        <div class="card-emoji">🟢</div>
+        <div class="card-name">Codex</div>
+        <div class="card-desc">OpenAI Responses API</div>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="btn">Next →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== SCREEN 2: CONFIGURE ========== -->
+<h2>Step 2 — 配置连接 <span class="t">核心交互</span></h2>
+<p class="desc">
+  这是关键页面。展示两个方向的数据流：<br>
+  <strong>① 用户把 upstream URL 告诉我们</strong>（我们知道往哪儿转发）<br>
+  <strong>② 我们把本地地址告诉用户</strong>（用户知道往哪儿发请求）
+</p>
+
+<div class="frame">
+  <div class="tb"><div class="d r"></div><div class="d y"></div><div class="d g"></div><div class="tb-t">Agent Trace — Setup Claude Code</div></div>
+  <div class="center" style="padding:32px 48px;">
+    <div class="steps"><div class="step-dot"></div><div class="step-dot a"></div><div class="step-dot"></div></div>
+
+    <div style="font-size:14px;font-weight:600;margin-bottom:4px;">🟠 Claude Code</div>
+    <div style="font-size:11px;color:var(--text3);margin-bottom:20px;">Configure your connection</div>
+
+    <!-- Flow diagram -->
+    <div class="flow-diagram">
+      <div class="flow-box">Agent Client</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-box highlight">Agent Trace</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-box">Upstream API</div>
+    </div>
+
+    <div class="config">
+      <!-- Section 1: Where to forward -->
+      <div class="config-section">
+        <div class="config-label"><span class="num">1</span> Your upstream API URL</div>
+        <div class="input-row">
+          <input class="input" value="https://api.anthropic.com" placeholder="https://api.anthropic.com" />
+        </div>
+        <div style="font-size:10px;color:var(--text4);margin-top:4px;">
+          Requests will be forwarded here. Change this if you use a custom endpoint or proxy.
+        </div>
+      </div>
+
+      <div class="arrow-hint">
+        <span>Agent Trace will listen on</span>
+        <span class="arrow">↓</span>
+      </div>
+
+      <!-- Section 2: Local listener -->
+      <div class="config-section">
+        <div class="config-label"><span class="num">2</span> Your local listener address</div>
+        <div class="input-row">
+          <input class="input readonly" value="http://127.0.0.1:8888" readonly />
+          <button class="copy-btn">📋 Copy</button>
+        </div>
+        <div style="font-size:10px;color:var(--text4);margin-top:4px;">
+          Point your agent client to this address instead of the upstream URL.
+        </div>
+      </div>
+
+      <!-- Shell example -->
+      <div class="shell">
+        <div class="shell-label">Configure your client</div>
+        <div class="shell-code">export ANTHROPIC_BASE_URL=http://127.0.0.1:8888</div>
+        <div class="shell-copy">Copy</div>
+      </div>
+    </div>
+
+    <div class="actions" style="margin-top:24px;">
+      <button class="btn-ghost">← Back</button>
+      <button class="btn">Start Listening</button>
+    </div>
+  </div>
+</div>
+
+<div class="ann">
+  <strong>交互逻辑：</strong>上方 URL 输入框预填 provider 默认值，用户可以改。
+  端口号默认 8888（Anthropic）/ 8889（Codex），也可以改。
+  点 "Start Listening" 后创建 profile 并启动 listener，直接进入工作区。
+</div>
+
+<!-- ========== SCREEN 2b: CODEX VARIANT ========== -->
+<h2>Step 2 — Codex 变体 <span class="t">不同 provider 不同默认值</span></h2>
+<p class="desc">切换 provider 后，默认 URL、端口、env var 都自动变。</p>
+
+<div class="frame">
+  <div class="tb"><div class="d r"></div><div class="d y"></div><div class="d g"></div><div class="tb-t">Agent Trace — Setup Codex</div></div>
+  <div class="center" style="padding:32px 48px;">
+    <div class="steps"><div class="step-dot"></div><div class="step-dot a"></div><div class="step-dot"></div></div>
+
+    <div style="font-size:14px;font-weight:600;margin-bottom:4px;">🟢 Codex</div>
+    <div style="font-size:11px;color:var(--text3);margin-bottom:20px;">Configure your connection</div>
+
+    <div class="flow-diagram">
+      <div class="flow-box">Codex CLI</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-box highlight">Agent Trace</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-box">OpenAI API</div>
+    </div>
+
+    <div class="config">
+      <div class="config-section">
+        <div class="config-label"><span class="num">1</span> Your upstream API URL</div>
+        <div class="input-row">
+          <input class="input" value="https://chatgpt.com/backend-api/codex" />
+        </div>
+        <div style="font-size:10px;color:var(--text4);margin-top:4px;">
+          Requests will be forwarded here. Change this if you use a custom endpoint.
+        </div>
+      </div>
+
+      <div class="arrow-hint">
+        <span>Agent Trace will listen on</span>
+        <span class="arrow">↓</span>
+      </div>
+
+      <div class="config-section">
+        <div class="config-label"><span class="num">2</span> Your local listener address</div>
+        <div class="input-row">
+          <input class="input readonly" value="http://127.0.0.1:8889" readonly />
+          <button class="copy-btn">📋 Copy</button>
+        </div>
+        <div style="font-size:10px;color:var(--text4);margin-top:4px;">
+          Point your Codex CLI to this address instead of the upstream URL.
+        </div>
+      </div>
+
+      <div class="shell">
+        <div class="shell-label">Configure your client</div>
+        <div class="shell-code">export OPENAI_BASE_URL=http://127.0.0.1:8889</div>
+        <div class="shell-copy">Copy</div>
+      </div>
+    </div>
+
+    <div class="actions" style="margin-top:24px;">
+      <button class="btn-ghost">← Back</button>
+      <button class="btn">Start Listening</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== SCREEN 3: DONE ========== -->
+<h2>Step 3 — 启动完成 <span class="t">进入工作区</span></h2>
+<p class="desc">Listener 启动后自动跳转到 workspace。如果用户还没配客户端，status bar 会持续提示。</p>
+
+<div class="frame">
+  <div class="tb"><div class="d r"></div><div class="d y"></div><div class="d g"></div><div class="tb-t">Agent Trace — 1 profile active · waiting for traffic…</div></div>
+  <div class="center" style="padding:40px 48px;">
+    <div class="steps"><div class="step-dot"></div><div class="step-dot"></div><div class="step-dot a"></div></div>
+
+    <div style="font-size:36px;margin-bottom:12px;">✅</div>
+    <div class="title" style="font-size:18px;">Listening on 127.0.0.1:8888</div>
+    <div class="hint" style="margin-bottom:20px;">Waiting for your first request. Make sure your agent client is configured:</div>
+
+    <div class="shell" style="max-width:400px;">
+      <div class="shell-label">Run this in your terminal</div>
+      <div class="shell-code">export ANTHROPIC_BASE_URL=http://127.0.0.1:8888</div>
+      <div class="shell-copy">Copy</div>
+    </div>
+
+    <div style="font-size:11px;color:var(--text3);margin-top:16px;">
+      Then use Claude Code / Codex normally. Captured sessions will appear here automatically.
+    </div>
+  </div>
+</div>
+
+<hr>
+
+<!-- ========== INTERACTION SUMMARY ========== -->
+<h2>交互总结</h2>
+
+<table style="width:100%;border-collapse:collapse;font-size:12px;margin-top:12px;">
+  <thead>
+    <tr style="border-bottom:1px solid var(--border);text-align:left;">
+      <th style="padding:8px 0;color:var(--text3);font-weight:600;">Step</th>
+      <th style="padding:8px 0;color:var(--text3);font-weight:600;">用户操作</th>
+      <th style="padding:8px 0;color:var(--text3);font-weight:600;">系统行为</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr style="border-bottom:1px solid var(--border-s);">
+      <td style="padding:8px 0;color:var(--accent);font-weight:600;">1. 选 Provider</td>
+      <td style="padding:8px 0;">点选卡片 → Next</td>
+      <td style="padding:8px 0;color:var(--text2);">预填默认 URL + 端口</td>
+    </tr>
+    <tr style="border-bottom:1px solid var(--border-s);">
+      <td style="padding:8px 0;color:var(--accent);font-weight:600;">2. 填 URL</td>
+      <td style="padding:8px 0;">确认或修改 upstream URL → 复制本地地址 → Start</td>
+      <td style="padding:8px 0;color:var(--text2);">创建 profile + 启动 listener</td>
+    </tr>
+    <tr>
+      <td style="padding:8px 0;color:var(--accent);font-weight:600;">3. 配客户端</td>
+      <td style="padding:8px 0;">复制 export 命令 → 在终端执行 → 正常使用 agent</td>
+      <td style="padding:8px 0;color:var(--text2);">自动捕获流量 → 跳转到 workspace</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="ann" style="margin-top:20px;">
+  <strong>关键设计原则：</strong><br>
+  ① Upstream URL 始终可编辑，预填默认值但不锁死<br>
+  ② 本地地址 + export 命令始终可见可复制<br>
+  ③ 数据流方向（Client → Agent Trace → Upstream）在页面上用图示表达<br>
+  ④ 端口号可以在输入框里直接改（高级用户）
+</div>
+
+</div>
+</body>
+</html>

@@ -1,64 +1,45 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import { SetupForm } from "../../src/renderer/src/components/setup-form";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { ProfileForm } from "../../src/renderer/src/features/profiles/profile-form";
 
-describe("SetupForm", () => {
+describe("ProfileForm", () => {
   let onSubmit: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     onSubmit = vi.fn().mockResolvedValue(undefined);
   });
 
-  it("renders TARGET_URL input", () => {
-    render(<SetupForm onSubmit={onSubmit} />);
-    expect(screen.getByLabelText("TARGET_URL")).toBeInTheDocument();
+  it("renders provider setup fields", () => {
+    render(<ProfileForm onSubmit={onSubmit} />);
+
+    expect(screen.getByText(/connect provider/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/provider/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/upstream base url/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/local port/i)).toBeInTheDocument();
   });
 
-  it("has placeholder text", () => {
-    render(<SetupForm onSubmit={onSubmit} />);
-    expect(
-      screen.getByPlaceholderText("https://api.anthropic.com"),
-    ).toBeInTheDocument();
-  });
+  it("submits a normalized connection profile", async () => {
+    render(<ProfileForm onSubmit={onSubmit} />);
 
-  it("button is disabled when input is empty", () => {
-    render(<SetupForm onSubmit={onSubmit} />);
-    const button = screen.getByRole("button", { name: /save and continue/i });
-    expect(button).toBeDisabled();
-  });
-
-  it("button is enabled when input has value", () => {
-    render(<SetupForm onSubmit={onSubmit} />);
-    const input = screen.getByLabelText("TARGET_URL");
-    fireEvent.change(input, { target: { value: "https://api.anthropic.com" } });
-    const button = screen.getByRole("button", { name: /save and continue/i });
-    expect(button).not.toBeDisabled();
-  });
-
-  it("calls onSubmit with trimmed URL on form submit", async () => {
-    render(<SetupForm onSubmit={onSubmit} />);
-    const input = screen.getByLabelText("TARGET_URL");
-    fireEvent.change(input, {
-      target: { value: "  https://api.anthropic.com  " },
+    fireEvent.change(screen.getByLabelText(/profile name/i), {
+      target: { value: "anthropic-dev" },
     });
-    const button = screen.getByRole("button", { name: /save and continue/i });
-    fireEvent.click(button);
+    fireEvent.change(screen.getByLabelText(/local port/i), {
+      target: { value: "8899" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /save profile/i }));
 
     await waitFor(() => {
-      expect(onSubmit).toHaveBeenCalledWith("https://api.anthropic.com");
+      expect(onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: "anthropic-dev",
+          providerId: "anthropic",
+          upstreamBaseUrl: "https://api.anthropic.com",
+          localPort: 8899,
+          enabled: true,
+          autoStart: false,
+        }),
+      );
     });
-  });
-
-  it("does not show API Key or other config fields", () => {
-    render(<SetupForm onSubmit={onSubmit} />);
-    expect(screen.queryByText(/api.?key/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/port/i)).not.toBeInTheDocument();
-  });
-
-  it("shows helper text", () => {
-    render(<SetupForm onSubmit={onSubmit} />);
-    expect(
-      screen.getByText(/claude code api requests will be forwarded/i),
-    ).toBeInTheDocument();
   });
 });

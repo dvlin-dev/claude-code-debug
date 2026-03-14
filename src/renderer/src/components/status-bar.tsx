@@ -1,62 +1,67 @@
-import { useState } from "react";
-import { Settings, Copy, Check } from "lucide-react";
-import { Badge } from "./ui/badge";
+import { Settings } from "lucide-react";
 import { Button } from "./ui/button";
+import { useProfileStore } from "../stores/profile-store";
+import { useSessionStore } from "../stores/session-store";
 import { useAppStore } from "../stores/app-store";
-import { ListeningToggle } from "./listening-toggle";
 
 interface StatusBarProps {
   onSettingsClick: () => void;
 }
 
 export function StatusBar({ onSettingsClick }: StatusBarProps) {
-  const { isListening, proxyAddress } = useAppStore();
-  const [copied, setCopied] = useState(false);
+  const profiles = useProfileStore((state) => state.profiles);
+  const statuses = useProfileStore((state) => state.statuses);
+  const sessions = useSessionStore((state) => state.sessions);
+  const toggleCommandPalette = useAppStore((state) => state.toggleCommandPalette);
 
-  const handleCopy = () => {
-    if (!proxyAddress) return;
-    navigator.clipboard.writeText(proxyAddress);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
-  };
+  const runningProfiles = profiles.filter(
+    (profile) => statuses[profile.id]?.isRunning,
+  );
+  const primaryPort = runningProfiles[0]
+    ? statuses[runningProfiles[0].id]?.port ?? runningProfiles[0].localPort
+    : null;
 
   return (
-    <div className="flex h-12 items-center justify-between border-b px-4 drag-region">
-      <span className="font-medium text-sm pl-16">Agent Trace</span>
+    <div className="drag-region flex h-10 items-center justify-between border-b px-4">
+      <span className="pl-16 text-xs font-semibold">Agent Trace</span>
 
-      <div className="flex items-center gap-3">
-        {isListening && proxyAddress && (
-          <div className="flex items-center gap-1">
-            <Badge variant="secondary" className="font-mono text-xs">
-              {proxyAddress}
-            </Badge>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6"
-              onClick={handleCopy}
-              title="Copy proxy address"
-            >
-              {copied ? (
-                <Check className="h-3.5 w-3.5 text-green-500" />
-              ) : (
-                <Copy className="h-3.5 w-3.5" />
-              )}
-            </Button>
-          </div>
+      <div className="flex items-center gap-2">
+        {primaryPort && (
+          <span className="flex items-center gap-1.5 border border-border px-2 py-0.5 text-[10px] font-mono text-muted-foreground">
+            <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_4px_rgba(52,211,153,0.4)]" />
+            :{primaryPort}
+          </span>
         )}
-        <ListeningToggle />
+        {!primaryPort && profiles.length > 0 && (
+          <span className="flex items-center gap-1.5 border border-border px-2 py-0.5 text-[10px] font-mono text-muted-foreground">
+            <span className="inline-block h-1.5 w-1.5 rounded-full bg-muted-foreground/30" />
+            Stopped
+          </span>
+        )}
+
+        <span className="h-4 w-px bg-border" />
+
+        <span className="text-[10px] text-muted-foreground">
+          {sessions.length} sessions
+        </span>
+
+        <span className="h-4 w-px bg-border" />
+
         <Button
           variant="ghost"
-          size="icon"
-          className="h-8 w-8"
+          size="icon-sm"
           onClick={onSettingsClick}
+          title="Settings"
         >
-          <Settings className="h-4 w-4" />
+          <Settings className="h-3.5 w-3.5" />
         </Button>
-        <Badge variant="outline" className="text-xs text-muted-foreground">
+        <button
+          className="border border-border px-1.5 py-0.5 text-[9px] font-mono text-muted-foreground hover:bg-muted hover:text-foreground"
+          onClick={toggleCommandPalette}
+          title="Command palette"
+        >
           ⌘K
-        </Badge>
+        </button>
       </div>
     </div>
   );

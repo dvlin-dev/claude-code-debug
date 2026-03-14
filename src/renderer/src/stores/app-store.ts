@@ -1,103 +1,93 @@
 import { create } from "zustand";
-import type { AppSettings } from "../../../shared/types";
 import { getElectronAPI } from "../lib/electron-api";
 import {
   createDefaultUpdateState,
   type UpdateState,
 } from "../../../shared/update";
-
-let initializePromise: Promise<void> | null = null;
-let unsubscribeUpdateState: (() => void) | null = null;
+import { useProfileStore } from "./profile-store";
 
 interface AppState {
-  settings: AppSettings | null;
-  isListening: boolean;
-  proxyAddress: string | null;
   initialized: boolean;
   updateState: UpdateState;
-
+  commandPaletteOpen: boolean;
   initialize: () => Promise<void>;
-  saveSettings: (input: { targetUrl: string }) => Promise<void>;
-  toggleListening: () => Promise<void>;
   setUpdateState: (updateState: UpdateState) => void;
+  toggleCommandPalette: () => void;
+  setCommandPaletteOpen: (open: boolean) => void;
   checkForUpdates: () => Promise<void>;
   downloadUpdate: () => Promise<void>;
   quitAndInstallUpdate: () => Promise<void>;
 }
 
-export const useAppStore = create<AppState>((set, get) => ({
-  settings: null,
-  isListening: false,
-  proxyAddress: null,
-  initialized: false,
-  updateState: createDefaultUpdateState(),
+export const useAppStore = create<AppState>((set, get) => {
+  let initializePromise: Promise<void> | null = null;
+  let unsubscribeUpdateState: (() => void) | null = null;
 
-  initialize: async () => {
-    if (get().initialized) {
-      return;
-    }
-    if (initializePromise) {
-      return initializePromise;
-    }
-    const api = getElectronAPI();
-    initializePromise = (async () => {
-      const [settings, status, updateState] = await Promise.all([
-        api.getSettings(),
-        api.getProxyStatus(),
-        api.getUpdateState(),
-      ]);
-      unsubscribeUpdateState?.();
-      unsubscribeUpdateState = api.onUpdateStateChanged((nextState) => {
-        set({ updateState: nextState });
-      });
-      set({
-        settings,
-        isListening: status.isRunning,
-        initialized: true,
-        updateState,
-      });
-    })();
-    try {
-      await initializePromise;
-    } finally {
-      initializePromise = null;
-    }
-  },
+  return {
+    initialized: false,
+    updateState: createDefaultUpdateState(),
+    commandPaletteOpen: false,
 
-  saveSettings: async (input) => {
-    const api = getElectronAPI();
-    const settings = await api.saveSettings(input);
-    set({ settings });
-  },
+    initialize: async () => {
+      if (get().initialized) {
+        return;
+      }
+      if (initializePromise) {
+        return initializePromise;
+      }
 
-  toggleListening: async () => {
-    const api = getElectronAPI();
-    const current = get().isListening;
-    const result = await api.toggleListening(!current);
-    set({
-      isListening: result.isRunning,
-      proxyAddress: result.address,
-    });
-  },
+      const api = getElectronAPI();
+      initializePromise = (async () => {
+        const [updateState] = await Promise.all([
+          api.getUpdateState(),
+          useProfileStore.getState().initialize(),
+        ]);
 
-  setUpdateState: (updateState) => {
-    set({ updateState });
-  },
+        unsubscribeUpdateState?.();
+        unsubscribeUpdateState = api.onUpdateStateChanged((nextState) => {
+          set({ updateState: nextState });
+        });
 
-  checkForUpdates: async () => {
-    const api = getElectronAPI();
-    const updateState = await api.checkForUpdates();
-    set({ updateState });
-  },
+        set({
+          initialized: true,
+          updateState,
+        });
+      })();
 
-  downloadUpdate: async () => {
-    const api = getElectronAPI();
-    const updateState = await api.downloadUpdate();
-    set({ updateState });
-  },
+      try {
+        await initializePromise;
+      } finally {
+        initializePromise = null;
+      }
+    },
 
-  quitAndInstallUpdate: async () => {
-    const api = getElectronAPI();
-    await api.quitAndInstallUpdate();
-  },
-}));
+    setUpdateState: (updateState) => {
+      set({ updateState });
+    },
+
+    toggleCommandPalette: () => {
+      set((state) => ({ commandPaletteOpen: !state.commandPaletteOpen }));
+    },
+
+    setCommandPaletteOpen: (open) => {
+      set({ commandPaletteOpen: open });
+    },
+
+    checkForUpdates: async () => {
+      const api = getElectronAPI();
+      const updateState = await api.checkForUpdates();
+      set({ updateState });
+    },
+
+    downloadUpdate: async () => {
+      const api = getElectronAPI();
+      const updateState = await api.downloadUpdate();
+      set({ updateState });
+    },
+
+    quitAndInstallUpdate: async () => {
+      const api = getElectronAPI();
+      await api.quitAndInstallUpdate();
+    },
+  };
+});

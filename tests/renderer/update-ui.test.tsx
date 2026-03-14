@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { SettingsDialog } from "../../src/renderer/src/components/settings-dialog";
 import { UpdateToastListener } from "../../src/renderer/src/components/update-toast-listener";
 import { useAppStore } from "../../src/renderer/src/stores/app-store";
+import { useProfileStore } from "../../src/renderer/src/stores/profile-store";
 
 const {
   toastInfo,
@@ -34,15 +35,19 @@ vi.mock("sonner", () => ({
 
 vi.mock("../../src/renderer/src/lib/electron-api", () => ({
   getElectronAPI: () => ({
-    getSettings: vi.fn().mockResolvedValue({ targetUrl: "https://api.anthropic.com" }),
-    getProxyStatus: vi.fn().mockResolvedValue({ isRunning: false }),
-    saveSettings: vi.fn().mockResolvedValue({ targetUrl: "https://api.anthropic.com" }),
+    getProfiles: vi.fn().mockResolvedValue([]),
+    saveProfiles: vi.fn().mockResolvedValue([]),
+    startProfile: vi.fn().mockResolvedValue(undefined),
+    stopProfile: vi.fn().mockResolvedValue(undefined),
+    getProfileStatuses: vi.fn().mockResolvedValue({}),
     getUpdateState,
     checkForUpdates,
     downloadUpdate,
     quitAndInstallUpdate,
     onUpdateStateChanged,
-    onCaptureUpdated: vi.fn(() => () => {}),
+    onTraceCaptured: vi.fn(() => () => {}),
+    onTraceReset: vi.fn(() => () => {}),
+    onProfileStatusChanged: vi.fn(() => () => {}),
     onProxyError: vi.fn(() => () => {}),
   }),
 }));
@@ -65,9 +70,6 @@ describe("update ui", () => {
     quitAndInstallUpdate.mockReset().mockResolvedValue(undefined);
     onUpdateStateChanged.mockReset().mockReturnValue(() => {});
     useAppStore.setState({
-      settings: { targetUrl: "https://api.anthropic.com" },
-      isListening: false,
-      proxyAddress: null,
       initialized: true,
       updateState: {
         status: "idle",
@@ -77,8 +79,27 @@ describe("update ui", () => {
         message: null,
         checkedAt: null,
       },
-      updateToastState: null,
     } as never);
+    useProfileStore.setState({
+      profiles: [
+        {
+          id: "anthropic-dev",
+          name: "anthropic-dev",
+          providerId: "anthropic",
+          upstreamBaseUrl: "https://api.anthropic.com",
+          localPort: 8888,
+          enabled: true,
+          autoStart: false,
+        },
+      ],
+      statuses: {
+        "anthropic-dev": {
+          isRunning: false,
+          port: 8888,
+        },
+      },
+      initialized: true,
+    });
   });
 
   it("shows check for updates in settings when idle", () => {
@@ -86,7 +107,7 @@ describe("update ui", () => {
 
     expect(screen.getByText("Version 0.1.2")).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /check for updates/i }),
+      screen.getByRole("button", { name: /check/i }),
     ).toBeInTheDocument();
   });
 
@@ -103,7 +124,7 @@ describe("update ui", () => {
     } as never);
 
     render(<SettingsDialog open onOpenChange={() => {}} />);
-    fireEvent.click(screen.getByRole("button", { name: /download update/i }));
+    fireEvent.click(screen.getByRole("button", { name: /download/i }));
 
     await waitFor(() => {
       expect(downloadUpdate).toHaveBeenCalledTimes(1);
@@ -123,7 +144,7 @@ describe("update ui", () => {
     } as never);
 
     render(<SettingsDialog open onOpenChange={() => {}} />);
-    fireEvent.click(screen.getByRole("button", { name: /restart to install/i }));
+    fireEvent.click(screen.getByRole("button", { name: /restart/i }));
 
     await waitFor(() => {
       expect(quitAndInstallUpdate).toHaveBeenCalledTimes(1);

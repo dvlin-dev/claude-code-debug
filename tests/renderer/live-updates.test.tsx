@@ -1,70 +1,119 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, renderHook, act, waitFor } from "@testing-library/react";
-import { useSessionStore } from "../../src/renderer/src/stores/session-store";
-import { useRequestStore } from "../../src/renderer/src/stores/request-store";
+import { act, render, waitFor } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useAppStore } from "../../src/renderer/src/stores/app-store";
+import { useProfileStore } from "../../src/renderer/src/stores/profile-store";
 import { useProxyEvents } from "../../src/renderer/src/hooks/use-proxy-events";
-import type { SessionSummary } from "../../src/shared/types";
+import { useSessionStore } from "../../src/renderer/src/stores/session-store";
+import { useTraceStore } from "../../src/renderer/src/stores/trace-store";
+import type {
+  ProfileStatusChangedEvent,
+  SessionListItemVM,
+  SessionTraceVM,
+  TraceResetEvent,
+  TraceCapturedEvent,
+} from "../../src/shared/contracts";
 import { createDefaultUpdateState } from "../../src/shared/update";
 
-// Mock the electron API
-const mockGetSettings = vi.fn().mockResolvedValue({ targetUrl: "https://api.anthropic.com" });
-const mockGetProxyStatus = vi.fn().mockResolvedValue({ isRunning: false });
-const mockListSessions = vi.fn().mockResolvedValue([]);
-const mockGetSessionRequests = vi.fn().mockResolvedValue([]);
-const mockClearData = vi.fn().mockResolvedValue(undefined);
-const mockGetUpdateState = vi.fn().mockResolvedValue(
-  createDefaultUpdateState("0.1.2"),
-);
-const mockCheckForUpdates = vi.fn().mockResolvedValue(
-  createDefaultUpdateState("0.1.2"),
-);
-const mockDownloadUpdate = vi.fn().mockResolvedValue(
-  createDefaultUpdateState("0.1.2"),
-);
-const mockQuitAndInstallUpdate = vi.fn().mockResolvedValue(undefined);
-const mockOnCaptureUpdated = vi.fn((cb) => {
-  captureHandler = cb;
+const mockGetProfiles = vi.fn();
+const mockGetProfileStatuses = vi.fn();
+const mockListSessions = vi.fn();
+const mockGetSessionTrace = vi.fn();
+const mockGetExchangeDetail = vi.fn();
+const mockClearHistory = vi.fn();
+const mockGetUpdateState = vi.fn();
+const mockCheckForUpdates = vi.fn();
+const mockDownloadUpdate = vi.fn();
+const mockQuitAndInstallUpdate = vi.fn();
+const mockOnUpdateStateChanged = vi.fn(() => () => {});
+const mockOnProxyError = vi.fn(() => () => {});
+
+let traceCapturedHandler: ((payload: TraceCapturedEvent) => void) | null = null;
+let profileStatusHandler: ((payload: ProfileStatusChangedEvent) => void) | null = null;
+let traceResetHandler: ((payload: TraceResetEvent) => void) | null = null;
+
+const mockOnTraceCaptured = vi.fn((cb: (payload: TraceCapturedEvent) => void) => {
+  traceCapturedHandler = cb;
   return () => {
-    captureHandler = null;
+    traceCapturedHandler = null;
   };
 });
-let captureHandler: ((payload: unknown) => void) | null = null;
+
+const mockOnProfileStatusChanged = vi.fn(
+  (cb: (payload: ProfileStatusChangedEvent) => void) => {
+    profileStatusHandler = cb;
+    return () => {
+      profileStatusHandler = null;
+    };
+  },
+);
+
+const mockOnTraceReset = vi.fn((cb: (payload: TraceResetEvent) => void) => {
+  traceResetHandler = cb;
+  return () => {
+    traceResetHandler = null;
+  };
+});
 
 vi.mock("../../src/renderer/src/lib/electron-api", () => ({
   getElectronAPI: () => ({
-    getSettings: mockGetSettings,
-    getProxyStatus: mockGetProxyStatus,
+    getProfiles: mockGetProfiles,
+    getProfileStatuses: mockGetProfileStatuses,
     listSessions: mockListSessions,
-    getSessionRequests: mockGetSessionRequests,
-    clearData: mockClearData,
+    getSessionTrace: mockGetSessionTrace,
+    getExchangeDetail: mockGetExchangeDetail,
+    clearHistory: mockClearHistory,
     getUpdateState: mockGetUpdateState,
     checkForUpdates: mockCheckForUpdates,
     downloadUpdate: mockDownloadUpdate,
     quitAndInstallUpdate: mockQuitAndInstallUpdate,
-    onUpdateStateChanged: vi.fn().mockReturnValue(() => {}),
-    onCaptureUpdated: mockOnCaptureUpdated,
-    onProxyError: vi.fn().mockReturnValue(() => {}),
+    onUpdateStateChanged: mockOnUpdateStateChanged,
+    onTraceCaptured: mockOnTraceCaptured,
+    onTraceReset: mockOnTraceReset,
+    onProfileStatusChanged: mockOnProfileStatusChanged,
+    onProxyError: mockOnProxyError,
   }),
 }));
 
-function createDeferred<T>() {
-  let resolve!: (value: T) => void;
-  const promise = new Promise<T>((r) => {
-    resolve = r;
-  });
-  return { promise, resolve };
+function makeSessions(count: number): SessionListItemVM[] {
+  return Array.from({ length: count }, (_, index) => ({
+    sessionId: `session-${index}`,
+    providerId: "anthropic",
+    providerLabel: "Anthropic",
+    profileId: "anthropic-dev",
+    title: `Session ${index}`,
+    model: "claude-opus-4-1",
+    updatedAt: new Date(Date.now() - index * 60000).toISOString(),
+    exchangeCount: index + 1,
+  }));
 }
 
-const makeSessions = (count: number): SessionSummary[] =>
-  Array.from({ length: count }, (_, i) => ({
-    sessionId: `s${i}`,
-    title: `Session ${i}`,
-    startedAt: new Date().toISOString(),
-    updatedAt: new Date(Date.now() - i * 60000).toISOString(),
-    requestCount: i + 1,
-    model: "claude-opus-4-6",
-  }));
+function makeTrace(sessionId: string): SessionTraceVM {
+  return {
+    sessionId,
+    providerId: "anthropic",
+    providerLabel: "Anthropic",
+    profileId: "anthropic-dev",
+    title: `Trace ${sessionId}`,
+    timeline: {
+      messages: [
+        { role: "user", blocks: [{ type: "text", text: "Hello" }] },
+        { role: "assistant", blocks: [{ type: "text", text: "Hi" }] },
+      ],
+    },
+    exchanges: [
+      {
+        exchangeId: `${sessionId}-exchange-1`,
+        providerId: "anthropic",
+        providerLabel: "Anthropic",
+        method: "POST",
+        path: "/v1/messages",
+        statusCode: 200,
+        durationMs: 100,
+        model: "claude-opus-4-1",
+      },
+    ],
+  };
+}
 
 describe("Session Store", () => {
   beforeEach(() => {
@@ -72,64 +121,74 @@ describe("Session Store", () => {
       sessions: [],
       selectedSessionId: null,
       searchQuery: "",
-    });
-    useRequestStore.setState({
-      requests: [],
-      selectedRequestId: null,
+    } as never);
+    useTraceStore.setState({
+      trace: null,
+      selectedExchangeId: null,
+      selectedExchangeDetail: null,
+      exchangeDetails: {},
       inspectorOpen: false,
       rawMode: false,
-      activeSessionId: null,
+    } as never);
+    mockListSessions.mockReset().mockResolvedValue(makeSessions(0));
+    mockGetSessionTrace.mockReset().mockResolvedValue(makeTrace("session-0"));
+    mockGetExchangeDetail.mockReset().mockResolvedValue({
+      ...makeTrace("session-0").exchanges[0]!,
+      inspector: { sections: [] },
     });
-    mockGetSessionRequests.mockReset();
-    mockOnCaptureUpdated.mockClear();
-    captureHandler = null;
+    mockClearHistory.mockReset().mockResolvedValue(undefined);
+    mockOnTraceCaptured.mockClear();
+    mockOnProfileStatusChanged.mockClear();
+    mockOnTraceReset.mockClear();
+    traceCapturedHandler = null;
+    profileStatusHandler = null;
+    traceResetHandler = null;
   });
 
-  it("updateSessions updates the session list", () => {
-    const sessions = makeSessions(3);
+  it("upsertSession adds a new session to the top of the list", () => {
     act(() => {
-      useSessionStore.getState().updateSessions(sessions);
+      useSessionStore.getState().upsertSession(makeSessions(1)[0]!);
     });
-    expect(useSessionStore.getState().sessions).toHaveLength(3);
+    expect(useSessionStore.getState().sessions).toHaveLength(1);
+  });
+
+  it("upsertSession moves an existing session to the top", () => {
+    const initial = makeSessions(3);
+    useSessionStore.setState({ sessions: initial } as never);
+
+    const updated = { ...initial[2]!, title: "Updated" };
+    act(() => {
+      useSessionStore.getState().upsertSession(updated);
+    });
+
+    const sessions = useSessionStore.getState().sessions;
+    expect(sessions).toHaveLength(3);
+    expect(sessions[0]!.title).toBe("Updated");
   });
 
   it("selectSession sets the selected session", () => {
     act(() => {
-      useSessionStore.getState().selectSession("s1");
+      useSessionStore.getState().selectSession("session-1");
     });
-    expect(useSessionStore.getState().selectedSessionId).toBe("s1");
+    expect(useSessionStore.getState().selectedSessionId).toBe("session-1");
   });
 
-  it("clearData empties sessions and selection", async () => {
+  it("clearHistory empties sessions and selection", async () => {
     useSessionStore.setState({
       sessions: makeSessions(2),
-      selectedSessionId: "s1",
-    });
+      selectedSessionId: "session-1",
+    } as never);
 
     await act(async () => {
-      await useSessionStore.getState().clearData();
+      await useSessionStore.getState().clearHistory();
     });
 
+    expect(mockClearHistory).toHaveBeenCalledTimes(1);
     expect(useSessionStore.getState().sessions).toHaveLength(0);
     expect(useSessionStore.getState().selectedSessionId).toBeNull();
   });
 
-  it("new capture updates session list", () => {
-    const initialSessions = makeSessions(2);
-    act(() => {
-      useSessionStore.getState().updateSessions(initialSessions);
-    });
-    expect(useSessionStore.getState().sessions).toHaveLength(2);
-
-    // Simulate new capture arriving
-    const updatedSessions = makeSessions(3);
-    act(() => {
-      useSessionStore.getState().updateSessions(updatedSessions);
-    });
-    expect(useSessionStore.getState().sessions).toHaveLength(3);
-  });
-
-  it("refreshes requests when the selected session receives a capture update", async () => {
+  it("refreshes trace when the selected session receives a trace update", async () => {
     function TestHarness() {
       useProxyEvents();
       return null;
@@ -137,28 +196,113 @@ describe("Session Store", () => {
 
     useSessionStore.setState({
       sessions: makeSessions(1),
-      selectedSessionId: "s0",
+      selectedSessionId: "session-0",
       searchQuery: "",
-    });
+    } as never);
 
     render(<TestHarness />);
 
-    expect(captureHandler).not.toBeNull();
+    expect(traceCapturedHandler).not.toBeNull();
 
     act(() => {
-      captureHandler?.({
-        sessions: makeSessions(2),
-        updatedSessionId: "s0",
-        updatedRequestId: "r-new",
+      traceCapturedHandler?.({
+        updatedSession: makeSessions(1)[0]!,
+        updatedExchangeId: "exchange-new",
       });
     });
 
     await waitFor(() => {
-      expect(mockGetSessionRequests).toHaveBeenCalledWith("s0");
+      expect(mockGetSessionTrace).toHaveBeenCalledWith("session-0");
     });
   });
 
-  it("does not refresh requests when another session receives a capture update", async () => {
+  it("keeps the currently selected exchange when the refreshed trace still contains it", async () => {
+    function TestHarness() {
+      useProxyEvents();
+      return null;
+    }
+
+    mockGetSessionTrace.mockResolvedValue({
+      ...makeTrace("session-0"),
+      exchanges: [
+        {
+          exchangeId: "exchange-1",
+          providerId: "anthropic",
+          providerLabel: "Anthropic",
+          method: "POST",
+          path: "/v1/messages",
+          statusCode: 200,
+          durationMs: 100,
+          model: "claude-opus-4-1",
+        },
+        {
+          exchangeId: "exchange-2",
+          providerId: "anthropic",
+          providerLabel: "Anthropic",
+          method: "POST",
+          path: "/v1/messages",
+          statusCode: 200,
+          durationMs: 120,
+          model: "claude-opus-4-1",
+        },
+      ],
+    });
+
+    useSessionStore.setState({
+      sessions: makeSessions(1),
+      selectedSessionId: "session-0",
+      searchQuery: "",
+    } as never);
+    useTraceStore.setState({
+      trace: {
+        ...makeTrace("session-0"),
+        exchanges: [
+          {
+            exchangeId: "exchange-1",
+            providerId: "anthropic",
+            providerLabel: "Anthropic",
+            method: "POST",
+            path: "/v1/messages",
+            statusCode: 200,
+            durationMs: 100,
+            model: "claude-opus-4-1",
+          },
+          {
+            exchangeId: "exchange-2",
+            providerId: "anthropic",
+            providerLabel: "Anthropic",
+            method: "POST",
+            path: "/v1/messages",
+            statusCode: 200,
+            durationMs: 120,
+            model: "claude-opus-4-1",
+          },
+        ],
+      },
+      selectedExchangeId: "exchange-1",
+      selectedExchangeDetail: null,
+      exchangeDetails: {},
+      inspectorOpen: false,
+      rawMode: false,
+    } as never);
+
+    render(<TestHarness />);
+
+    act(() => {
+      traceCapturedHandler?.({
+        updatedSession: makeSessions(1)[0]!,
+        updatedExchangeId: "exchange-3",
+      });
+    });
+
+    await waitFor(() => {
+      expect(mockGetSessionTrace).toHaveBeenCalledWith("session-0");
+    });
+
+    expect(useTraceStore.getState().selectedExchangeId).toBe("exchange-1");
+  });
+
+  it("does not refresh trace when another session receives a trace update", async () => {
     function TestHarness() {
       useProxyEvents();
       return null;
@@ -166,114 +310,128 @@ describe("Session Store", () => {
 
     useSessionStore.setState({
       sessions: makeSessions(2),
-      selectedSessionId: "s0",
+      selectedSessionId: "session-0",
       searchQuery: "",
-    });
+    } as never);
 
     render(<TestHarness />);
 
     act(() => {
-      captureHandler?.({
-        sessions: makeSessions(3),
-        updatedSessionId: "s1",
-        updatedRequestId: "r-other",
+      traceCapturedHandler?.({
+        updatedSession: {
+          ...makeSessions(2)[1]!,
+          sessionId: "session-1",
+        },
+        updatedExchangeId: "exchange-other",
       });
     });
 
     await Promise.resolve();
-    expect(mockGetSessionRequests).not.toHaveBeenCalled();
+    expect(mockGetSessionTrace).not.toHaveBeenCalled();
   });
 
-  it("keeps a single capture subscription while selected session changes", () => {
+  it("updates profile statuses when a status event arrives", async () => {
     function TestHarness() {
       useProxyEvents();
       return null;
     }
 
     render(<TestHarness />);
-    expect(mockOnCaptureUpdated).toHaveBeenCalledTimes(1);
 
     act(() => {
-      useSessionStore.getState().selectSession("s1");
+      profileStatusHandler?.({
+        statuses: {
+          "anthropic-dev": { isRunning: true, port: 8888 },
+        },
+      });
     });
 
-    expect(mockOnCaptureUpdated).toHaveBeenCalledTimes(1);
+    expect(useProfileStore.getState().statuses["anthropic-dev"]).toEqual({
+      isRunning: true,
+      port: 8888,
+    });
   });
 
-  it("drops stale request refresh results after switching sessions", async () => {
-    const s0Deferred = createDeferred<Array<{ requestId: string; sessionId: string }>>();
-    const s1Deferred = createDeferred<Array<{ requestId: string; sessionId: string }>>();
+  it("clears session and trace state when a reset event arrives", () => {
+    function TestHarness() {
+      useProxyEvents();
+      return null;
+    }
 
-    mockGetSessionRequests.mockImplementation((sessionId: string) => {
-      if (sessionId === "s0") {
-        return s0Deferred.promise;
-      }
-      if (sessionId === "s1") {
-        return s1Deferred.promise;
-      }
-      return Promise.resolve([]);
-    });
-
-    useRequestStore.setState({
-      requests: [],
-      selectedRequestId: null,
+    useSessionStore.setState({
+      sessions: makeSessions(2),
+      selectedSessionId: "session-0",
+      searchQuery: "",
+    } as never);
+    useTraceStore.setState({
+      trace: makeTrace("session-0"),
+      selectedExchangeId: "session-0-exchange-1",
+      selectedExchangeDetail: null,
+      exchangeDetails: {},
       inspectorOpen: false,
       rawMode: false,
-      activeSessionId: "s0",
+    } as never);
+
+    render(<TestHarness />);
+
+    act(() => {
+      traceResetHandler?.({
+        clearedAt: "2026-03-14T00:00:00.000Z",
+      });
     });
 
-    const refreshPromise = useRequestStore
-      .getState()
-      .refreshSessionIfSelected("s0", "s0");
-
-    const switchPromise = useRequestStore.getState().loadRequests("s1");
-
-    s1Deferred.resolve([
-      { requestId: "r-s1", sessionId: "s1" } as never,
-    ]);
-    await switchPromise;
-
-    s0Deferred.resolve([
-      { requestId: "r-s0", sessionId: "s0" } as never,
-    ]);
-    await refreshPromise;
-
-    expect(useRequestStore.getState().activeSessionId).toBe("s1");
-    expect(useRequestStore.getState().requests).toEqual([
-      { requestId: "r-s1", sessionId: "s1" },
-    ]);
+    expect(useSessionStore.getState().sessions).toHaveLength(0);
+    expect(useSessionStore.getState().selectedSessionId).toBeNull();
+    expect(useTraceStore.getState().trace).toBeNull();
   });
 });
 
 describe("App Store", () => {
   beforeEach(() => {
+    mockGetProfiles.mockReset().mockResolvedValue([
+      {
+        id: "anthropic-dev",
+        name: "anthropic-dev",
+        providerId: "anthropic",
+        upstreamBaseUrl: "https://api.anthropic.com",
+        localPort: 8888,
+        enabled: true,
+        autoStart: false,
+      },
+    ]);
+    mockGetProfileStatuses.mockReset().mockResolvedValue({
+      "anthropic-dev": { isRunning: false, port: 8888 },
+    });
+    mockGetUpdateState.mockReset().mockResolvedValue(
+      createDefaultUpdateState("0.1.2"),
+    );
+    mockCheckForUpdates.mockReset().mockResolvedValue(
+      createDefaultUpdateState("0.1.2"),
+    );
+    mockDownloadUpdate.mockReset().mockResolvedValue(
+      createDefaultUpdateState("0.1.2"),
+    );
+    mockQuitAndInstallUpdate.mockReset().mockResolvedValue(undefined);
+    mockOnUpdateStateChanged.mockReset().mockReturnValue(() => {});
+
     useAppStore.setState({
-      settings: null,
-      isListening: false,
-      proxyAddress: null,
       initialized: false,
       updateState: createDefaultUpdateState(),
-    });
+    } as never);
+    useProfileStore.setState({
+      profiles: [],
+      statuses: {},
+      initialized: false,
+    } as never);
   });
 
-  it("initialize loads settings", async () => {
+  it("initialize loads profiles and marks the app initialized", async () => {
     await act(async () => {
       await useAppStore.getState().initialize();
     });
 
-    expect(useAppStore.getState().settings).toEqual({
-      targetUrl: "https://api.anthropic.com",
-    });
     expect(useAppStore.getState().initialized).toBe(true);
-  });
-
-  it("initialize loads proxy status", async () => {
-    mockGetProxyStatus.mockResolvedValueOnce({ isRunning: true });
-
-    await act(async () => {
-      await useAppStore.getState().initialize();
-    });
-
-    expect(useAppStore.getState().isListening).toBe(true);
+    expect(useProfileStore.getState().profiles).toHaveLength(1);
+    expect(useProfileStore.getState().profiles[0]?.name).toBe("anthropic-dev");
   });
 });

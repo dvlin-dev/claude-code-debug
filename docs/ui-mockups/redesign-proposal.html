@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agent Trace UI Redesign — Complete Spec</title>
+<style>
+  :root {
+    --bg: #0f0f0f; --surface: #171717; --elevated: #1e1e1e; --hover: #262626;
+    --border: #2a2a2a; --border-s: #222; --text: #e5e5e5; --text2: #999; --text3: #666; --text4: #444;
+    --accent: #7c6bf5; --accent-s: rgba(124,107,245,0.12);
+    --green: #34d399; --green-s: rgba(52,211,153,0.12);
+    --blue: #60a5fa; --blue-s: rgba(96,165,250,0.12);
+    --orange: #fb923c; --orange-s: rgba(251,146,60,0.12);
+    --red: #f87171; --red-s: rgba(248,113,113,0.12);
+    --pink: #f472b6; --pink-s: rgba(244,114,182,0.12);
+    --cyan: #22d3ee; --cyan-s: rgba(34,211,238,0.12);
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background:#050505; color:var(--text); -webkit-font-smoothing:antialiased; line-height:1.5; }
+  code { font-family: 'SF Mono','Menlo','Consolas', monospace; font-size: 0.85em; background: var(--elevated); padding: 1px 5px; border-radius: 3px; }
+
+  .page { max-width:1440px; margin:0 auto; padding:60px 40px; }
+  h1 { font-size:36px; font-weight:700; letter-spacing:-0.03em; margin-bottom:8px; }
+  h1 span { color:var(--accent); }
+  .sub { color:var(--text2); font-size:16px; margin-bottom:60px; max-width:680px; }
+  h2 { font-size:22px; font-weight:600; margin:56px 0 6px; letter-spacing:-0.02em; }
+  h2 .t { display:inline-block; background:var(--accent-s); color:var(--accent); font-size:10px; font-weight:700; padding:2px 7px; border-radius:3px; margin-left:8px; vertical-align:middle; text-transform:uppercase; letter-spacing:0.06em; }
+  .desc { color:var(--text2); font-size:13px; margin-bottom:20px; max-width:720px; }
+  hr { border:none; border-top:1px solid var(--border); margin:48px 0; }
+
+  /* Frame */
+  .frame { background:var(--bg); border:1px solid var(--border); border-radius:10px; overflow:hidden; box-shadow:0 20px 50px rgba(0,0,0,0.5); margin:20px 0 40px; }
+  .tb { height:36px; background:var(--surface); border-bottom:1px solid var(--border); display:flex; align-items:center; padding:0 14px; gap:7px; }
+  .d { width:11px; height:11px; border-radius:50%; } .d.r{background:#ff5f57;} .d.y{background:#febc2e;} .d.g{background:#28c840;}
+  .tb-t { flex:1; text-align:center; color:var(--text4); font-size:11px; font-weight:500; }
+
+  /* Layout */
+  .app { display:flex; height:620px; }
+
+  /* Sidebar */
+  .sb { width:272px; border-right:1px solid var(--border); display:flex; flex-direction:column; background:var(--surface); flex-shrink:0; }
+  .sb-h { padding:10px 12px 6px; }
+
+  .ps { display:flex; align-items:center; gap:7px; padding:5px 9px; border-radius:6px; background:var(--elevated); border:1px solid var(--border); cursor:pointer; margin-bottom:8px; }
+  .ps-dot { width:7px; height:7px; border-radius:50%; background:var(--green); box-shadow:0 0 5px rgba(52,211,153,0.5); flex-shrink:0; }
+  .ps-n { font-size:12px; font-weight:600; flex:1; }
+  .ps-p { font-size:10px; color:var(--text4); font-family:'SF Mono',monospace; }
+  .ps-c { color:var(--text4); font-size:9px; }
+
+  .sb-search { display:flex; align-items:center; gap:5px; padding:6px 9px; border-radius:6px; background:var(--elevated); border:1px solid var(--border-s); margin-bottom:6px; }
+  .sb-search svg { width:13px; height:13px; color:var(--text4); flex-shrink:0; }
+  .sb-search span { flex:1; font-size:12px; color:var(--text4); }
+  .sb-search kbd { font-size:9px; color:var(--text4); background:var(--bg); border-radius:2px; padding:1px 4px; font-family:'SF Mono',monospace; }
+
+  .ft { display:flex; gap:2px; padding:0 0 6px; }
+  .ft-i { font-size:10px; color:var(--text4); padding:3px 7px; border-radius:4px; cursor:pointer; font-weight:500; }
+  .ft-i.a { background:var(--accent-s); color:var(--accent); }
+
+  .sl { flex:1; overflow-y:auto; padding:0 6px; }
+  .dg { font-size:9px; color:var(--text4); text-transform:uppercase; letter-spacing:0.1em; font-weight:700; padding:10px 8px 3px; }
+  .si { padding:8px 10px; border-radius:6px; cursor:pointer; margin-bottom:1px; }
+  .si:hover { background:var(--hover); }
+  .si.a { background:var(--accent-s); }
+  .si-t { font-size:12px; font-weight:500; margin-bottom:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .si-m { display:flex; align-items:center; gap:5px; font-size:10px; color:var(--text4); }
+  .pb { display:inline-flex; padding:1px 5px; border-radius:3px; font-size:9px; font-weight:600; letter-spacing:0.02em; }
+  .pb.an { background:var(--orange-s); color:var(--orange); }
+  .pb.cx { background:var(--green-s); color:var(--green); }
+  .si-m .ml { margin-left:auto; }
+
+  .sb-f { padding:6px 10px; border-top:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; font-size:10px; color:var(--text4); }
+  .sb-fb { cursor:pointer; padding:3px 5px; border-radius:3px; }
+  .sb-fb:hover { background:var(--hover); color:var(--text2); }
+
+  /* Main */
+  .mn { flex:1; display:flex; flex-direction:column; background:var(--bg); min-width:0; }
+  .mn-h { height:40px; border-bottom:1px solid var(--border); display:flex; align-items:center; padding:0 14px; gap:7px; flex-shrink:0; }
+  .mn-t { font-size:13px; font-weight:600; flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; }
+  .hb { font-size:10px; padding:2px 7px; border-radius:4px; background:var(--elevated); color:var(--text2); border:1px solid var(--border); font-family:'SF Mono',monospace; }
+  .hbtn { width:26px; height:26px; border-radius:4px; display:flex; align-items:center; justify-content:center; color:var(--text4); cursor:pointer; font-size:12px; border:1px solid transparent; flex-shrink:0; }
+  .hbtn:hover { background:var(--hover); color:var(--text2); }
+  .hbtn.a { background:var(--accent-s); color:var(--accent); border-color:rgba(124,107,245,0.2); }
+
+  .mn-b { display:flex; flex:1; overflow:hidden; }
+
+  /* Conversation */
+  .cv { flex:1; overflow-y:auto; padding:16px 20px; }
+  .msg { max-width:600px; margin:0 auto 14px; padding:12px 14px; border-radius:10px; }
+  .msg.u { background:var(--blue-s); border:1px solid rgba(96,165,250,0.12); }
+  .msg.as { background:var(--surface); border:1px solid var(--border); }
+  .msg.sys { background:var(--cyan-s); border:1px solid rgba(34,211,238,0.1); }
+  .mr { font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:5px; display:flex; align-items:center; gap:6px; }
+  .mr .cp { margin-left:auto; color:var(--text4); cursor:pointer; font-size:11px; font-weight:400; letter-spacing:0; text-transform:none; opacity:0; transition:opacity 0.15s; }
+  .msg:hover .cp { opacity:1; }
+  .msg.u .mr { color:var(--blue); }
+  .msg.as .mr { color:var(--text4); }
+  .msg.sys .mr { color:var(--cyan); }
+  .mt { font-size:12px; line-height:1.65; color:var(--text); }
+  .mt code { font-size:11px; }
+
+  .tc-wrap { max-width:600px; margin:0 auto 10px; }
+  .tc { padding:9px 12px; border-radius:8px; background:var(--surface); border:1px solid var(--border); border-left:3px solid var(--accent); }
+  .tc-h { display:flex; align-items:center; gap:5px; }
+  .tc-icon { color:var(--accent); font-size:11px; }
+  .tc-n { font-size:11px; font-weight:600; color:var(--accent); font-family:'SF Mono',monospace; }
+  .tc-s { margin-left:auto; font-size:9px; display:flex; align-items:center; gap:3px; }
+  .tc-s.ok { color:var(--green); }
+  .tc-s.err { color:var(--red); }
+  .tc-b { font-size:11px; color:var(--text2); font-family:'SF Mono',monospace; background:var(--bg); border-radius:4px; padding:6px 8px; margin-top:5px; white-space:pre; overflow-x:auto; }
+  .tc-id { font-size:9px; color:var(--text4); margin-top:3px; font-family:'SF Mono',monospace; }
+
+  .rb { max-width:600px; margin:0 auto 10px; padding:8px 12px; border-radius:8px; background:var(--pink-s); border:1px solid rgba(244,114,182,0.12); cursor:pointer; }
+  .rb-h { display:flex; align-items:center; gap:5px; font-size:11px; color:var(--pink); font-weight:600; }
+  .rb-caret { font-size:9px; }
+  .rb-time { margin-left:auto; font-size:10px; color:rgba(244,114,182,0.6); font-weight:400; }
+
+  /* Inspector */
+  .ip { width:320px; border-left:1px solid var(--border); display:flex; flex-direction:column; background:var(--surface); flex-shrink:0; }
+  .ip-h { height:40px; border-bottom:1px solid var(--border); display:flex; align-items:center; padding:0 10px; gap:6px; flex-shrink:0; }
+  .ip-t { font-size:11px; font-weight:600; flex:1; text-transform:uppercase; letter-spacing:0.06em; color:var(--text2); }
+  .ip-tabs { display:flex; border-bottom:1px solid var(--border); padding:0 10px; flex-shrink:0; }
+  .ip-tab { font-size:11px; color:var(--text4); padding:7px 10px; cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-1px; font-weight:500; }
+  .ip-tab.a { color:var(--accent); border-bottom-color:var(--accent); }
+  .ip-body { flex:1; overflow-y:auto; padding:10px; }
+
+  .ov-r { display:flex; justify-content:space-between; align-items:center; padding:5px 0; border-bottom:1px solid var(--border-s); }
+  .ov-l { font-size:11px; color:var(--text3); }
+  .ov-v { font-size:11px; color:var(--text); font-family:'SF Mono',monospace; }
+  .sb2 { padding:2px 5px; border-radius:3px; font-size:9px; font-weight:600; }
+  .sb2.ok { background:var(--green-s); color:var(--green); }
+  .sb2.er { background:var(--red-s); color:var(--red); }
+
+  .st { font-size:10px; font-weight:700; color:var(--text4); text-transform:uppercase; letter-spacing:0.08em; margin:14px 0 6px; }
+  .ug { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+  .uc { background:var(--bg); border-radius:6px; padding:8px 10px; border:1px solid var(--border-s); }
+  .uc-n { font-size:16px; font-weight:700; font-family:'SF Mono',monospace; }
+  .uc-l { font-size:9px; color:var(--text4); margin-top:1px; }
+
+  .tl-i { padding:5px 8px; border-radius:4px; background:var(--bg); border:1px solid var(--border-s); margin-bottom:4px; font-size:11px; display:flex; align-items:center; gap:6px; }
+  .tl-n { font-family:'SF Mono',monospace; font-weight:600; color:var(--text); }
+  .tl-d { color:var(--text4); font-size:10px; flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+  /* Request list in inspector */
+  .rq { padding:6px 8px; border-radius:4px; cursor:pointer; margin-bottom:2px; display:flex; align-items:center; gap:6px; font-size:11px; }
+  .rq:hover { background:var(--hover); }
+  .rq.a { background:var(--accent-s); }
+  .rq-m { font-family:'SF Mono',monospace; font-weight:600; color:var(--text2); width:36px; flex-shrink:0; }
+  .rq-p { flex:1; color:var(--text3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-family:'SF Mono',monospace; }
+  .rq-sc { font-weight:600; flex-shrink:0; }
+  .rq-sc.g { color:var(--green); }
+  .rq-sc.o { color:var(--orange); }
+  .rq-d { color:var(--text4); flex-shrink:0; font-family:'SF Mono',monospace; }
+  .rq-mb { font-size:9px; padding:1px 4px; border-radius:2px; background:var(--elevated); color:var(--text3); flex-shrink:0; }
+
+  /* Settings */
+  .settings-frame { background:var(--bg); border:1px solid var(--border); border-radius:10px; overflow:hidden; box-shadow:0 20px 50px rgba(0,0,0,0.5); margin:20px 0 40px; max-width:540px; }
+  .sf-body { padding:24px; }
+  .sf-sec { margin-bottom:20px; }
+  .sf-sec-t { font-size:13px; font-weight:600; margin-bottom:4px; }
+  .sf-sec-d { font-size:11px; color:var(--text3); margin-bottom:10px; }
+  .sf-pf { padding:8px 10px; background:var(--surface); border:1px solid var(--border); border-radius:6px; margin-bottom:6px; display:flex; align-items:center; gap:8px; }
+  .sf-pf-dot { width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+  .sf-pf-n { font-size:12px; font-weight:500; flex:1; }
+  .sf-pf-url { font-size:10px; color:var(--text4); font-family:'SF Mono',monospace; }
+  .sf-pf-port { font-size:10px; color:var(--text3); font-family:'SF Mono',monospace; }
+  .sf-pf-sw { width:28px; height:16px; border-radius:8px; background:var(--green); position:relative; cursor:pointer; flex-shrink:0; }
+  .sf-pf-sw::after { content:""; position:absolute; width:12px; height:12px; border-radius:50%; background:white; top:2px; right:2px; }
+  .sf-pf-sw.off { background:var(--text4); }
+  .sf-pf-sw.off::after { right:auto; left:2px; }
+  .sf-ver { font-size:11px; color:var(--text3); margin-bottom:4px; }
+  .sf-btn { padding:6px 14px; border-radius:4px; border:1px solid var(--border); background:var(--surface); color:var(--text); font-size:11px; cursor:pointer; }
+  .sf-btn:hover { background:var(--hover); }
+  .sf-check { display:flex; align-items:center; gap:8px; padding:6px 0; font-size:11px; color:var(--text2); }
+  .sf-check input { width:14px; height:14px; }
+
+  /* Command Palette */
+  .cp-frame { background:var(--bg); border:1px solid var(--border); border-radius:10px; overflow:hidden; box-shadow:0 20px 50px rgba(0,0,0,0.5); margin:20px 0 40px; max-width:540px; }
+  .cp-search { padding:12px 16px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:8px; }
+  .cp-search svg { width:16px; height:16px; color:var(--text3); }
+  .cp-search span { font-size:14px; color:var(--text4); }
+  .cp-group { padding:6px 8px; }
+  .cp-gl { font-size:10px; color:var(--text4); font-weight:600; padding:6px 8px 4px; text-transform:uppercase; letter-spacing:0.06em; }
+  .cp-i { padding:7px 10px; border-radius:6px; display:flex; align-items:center; gap:8px; cursor:pointer; font-size:13px; }
+  .cp-i:hover { background:var(--hover); }
+  .cp-i.a { background:var(--accent-s); }
+  .cp-i-t { flex:1; }
+  .cp-i-r { font-size:11px; color:var(--text4); }
+
+  /* Onboarding */
+  .ob-c { padding:48px 60px; display:flex; flex-direction:column; align-items:center; text-align:center; }
+  .ob-icon { width:64px; height:64px; border-radius:16px; background:linear-gradient(135deg,var(--accent),#a78bfa); display:flex; align-items:center; justify-content:center; font-size:28px; margin-bottom:20px; box-shadow:0 6px 20px rgba(124,107,245,0.3); }
+  .ob-t { font-size:24px; font-weight:700; letter-spacing:-0.02em; margin-bottom:6px; }
+  .ob-d { font-size:13px; color:var(--text2); max-width:400px; margin-bottom:28px; }
+  .pc { display:flex; gap:12px; margin-bottom:28px; }
+  .pci { width:172px; padding:16px; border-radius:10px; border:1px solid var(--border); background:var(--surface); text-align:left; cursor:pointer; transition:all 0.15s; }
+  .pci:hover { border-color:var(--accent); }
+  .pci.s { border-color:var(--accent); background:var(--accent-s); box-shadow:0 0 0 1px var(--accent); }
+  .pci-icon { font-size:22px; margin-bottom:8px; }
+  .pci-n { font-size:13px; font-weight:600; margin-bottom:3px; }
+  .pci-d { font-size:11px; color:var(--text3); line-height:1.4; }
+  .ob-btn { padding:9px 24px; border-radius:8px; background:var(--accent); color:white; font-size:13px; font-weight:600; border:none; cursor:pointer; }
+
+  /* Info tables */
+  .info-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(260px, 1fr)); gap:12px; margin:16px 0 32px; }
+  .info-card { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:14px 16px; }
+  .info-card h4 { font-size:12px; font-weight:600; margin-bottom:6px; display:flex; align-items:center; gap:6px; }
+  .info-card h4 .ic-dot { width:8px; height:8px; border-radius:50%; }
+  .info-card ul { list-style:none; font-size:11px; color:var(--text2); }
+  .info-card li { padding:2px 0; display:flex; gap:4px; }
+  .info-card li::before { content:"·"; color:var(--text4); }
+  .new-tag { font-size:8px; background:var(--green-s); color:var(--green); padding:1px 4px; border-radius:2px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; }
+</style>
+</head>
+<body>
+<div class="page">
+
+<h1>Agent Trace <span>UI Redesign</span></h1>
+<p class="sub">完整功能对照版。所有现有功能保留并增强，无任何功能删减。</p>
+
+<!-- ===== FEATURE AUDIT ===== -->
+<h2>功能清单对照 <span class="t">Zero Loss</span></h2>
+<p class="desc">左侧是当前已有的功能，右侧标注保留方式和增强点。</p>
+
+<div class="info-grid">
+  <div class="info-card">
+    <h4><span class="ic-dot" style="background:var(--accent)"></span> Status Bar</h4>
+    <ul>
+      <li>"Agent Trace" 标题 → 保留</li>
+      <li>Profile count badge → 移入 sidebar profile switcher</li>
+      <li>Proxy 地址 + 复制按钮 → 保留在 status bar</li>
+      <li>Settings 齿轮按钮 → 保留</li>
+      <li>⌘K 快捷键提示 → 保留</li>
+      <li><span class="new-tag">NEW</span> 实时捕获计数 (captured: N)</li>
+      <li><span class="new-tag">NEW</span> 暗色模式切换</li>
+    </ul>
+  </div>
+  <div class="info-card">
+    <h4><span class="ic-dot" style="background:var(--blue)"></span> Session Sidebar</h4>
+    <ul>
+      <li>Session 列表 + 搜索框 → 保留</li>
+      <li>Session title (XML stripped) → 保留</li>
+      <li>Model badge → 保留</li>
+      <li>Provider label → 保留 + 颜色编码</li>
+      <li>Exchange count → 保留</li>
+      <li>相对时间 → 保留</li>
+      <li><span class="new-tag">NEW</span> Profile switcher 置顶</li>
+      <li><span class="new-tag">NEW</span> Provider filter tabs</li>
+      <li><span class="new-tag">NEW</span> 日期分组 (Today/Yesterday/...)</li>
+    </ul>
+  </div>
+  <div class="info-card">
+    <h4><span class="ic-dot" style="background:var(--green)"></span> Conversation View</h4>
+    <ul>
+      <li>User / Assistant / Tool / System / Unknown 角色 → 全保留</li>
+      <li>Text block + 展开/收起 → 保留</li>
+      <li>Reasoning block 折叠 → 保留 + 显示耗时</li>
+      <li>Tool-call block (name + JSON input) → 保留 + 状态标记</li>
+      <li>Tool-result block (preview + 展开) → 保留 + isError 标记</li>
+      <li>Unknown block fallback → 保留</li>
+      <li>Copy 按钮 (每条消息) → 保留</li>
+      <li>Raw mode JSON 展示 → 保留</li>
+      <li>自动滚动到底部 → 保留</li>
+      <li><span class="new-tag">NEW</span> Tool call-result 通过 callId 关联显示</li>
+    </ul>
+  </div>
+  <div class="info-card">
+    <h4><span class="ic-dot" style="background:var(--orange)"></span> Inspector Panel</h4>
+    <ul>
+      <li>Overview section (label-value pairs) → 保留</li>
+      <li>Text section → 保留</li>
+      <li>Tool-list section (name + desc + schema) → 保留</li>
+      <li>JSON section → 保留</li>
+      <li>Raw-request / Raw-response section → 保留</li>
+      <li>Requests 列表 (method, path, status, duration, model) → 保留</li>
+      <li>开关 toggle → 保留</li>
+      <li><span class="new-tag">NEW</span> Token usage 卡片 (input/output/reasoning)</li>
+      <li><span class="new-tag">NEW</span> Stop reason 显示</li>
+      <li><span class="new-tag">NEW</span> Request/response size 显示</li>
+    </ul>
+  </div>
+  <div class="info-card">
+    <h4><span class="ic-dot" style="background:var(--pink)"></span> Settings Dialog</h4>
+    <ul>
+      <li>Profile 列表 (name, providerId, url) → 保留 + 启停开关</li>
+      <li>Profile count → 保留</li>
+      <li>自动更新: version, status, button → 全保留</li>
+      <li>下载进度百分比 → 保留</li>
+      <li><span class="new-tag">NEW</span> enabled / autoStart 开关可见</li>
+      <li><span class="new-tag">NEW</span> 端口号 + 运行状态指示</li>
+    </ul>
+  </div>
+  <div class="info-card">
+    <h4><span class="ic-dot" style="background:var(--cyan)"></span> Command Palette + Other</h4>
+    <ul>
+      <li>⌘K 搜索 sessions/profiles/actions → 保留</li>
+      <li>Session: title + provider label → 保留</li>
+      <li>Profile: name + Start/Stop → 保留</li>
+      <li>Clear history action → 保留</li>
+      <li>Conversation header: title + model + Raw + Inspector → 保留</li>
+      <li>Empty state (icon + text) → 保留 + 增强引导</li>
+      <li>Proxy instructions → 保留</li>
+      <li>Listening toggle → 融入 profile switcher</li>
+      <li>Onboarding: profile form → 改为卡片式</li>
+    </ul>
+  </div>
+</div>
+
+<hr>
+
+<!-- ===== SCREEN 1: ONBOARDING ===== -->
+<h2>Screen 1 — Onboarding <span class="t">首次引导</span></h2>
+<p class="desc">一键选择 provider → 自动创建 profile → 立即进入工作区。保留 name/port 等高级配置的入口。</p>
+
+<div class="frame" style="max-width:680px;">
+  <div class="tb"><div class="d r"></div><div class="d y"></div><div class="d g"></div><div class="tb-t">Agent Trace</div></div>
+  <div class="ob-c">
+    <div class="ob-icon">🔍</div>
+    <div class="ob-t">Welcome to Agent Trace</div>
+    <div class="ob-d">选择你的 agent 类型，自动创建本地 listener 并开始捕获流量。</div>
+    <div class="pc">
+      <div class="pci s">
+        <div class="pci-icon">🟠</div>
+        <div class="pci-n">Claude Code</div>
+        <div class="pci-d">Anthropic Messages API<br><code>:8888</code></div>
+      </div>
+      <div class="pci">
+        <div class="pci-icon">🟢</div>
+        <div class="pci-n">Codex</div>
+        <div class="pci-d">OpenAI Responses API<br><code>:8889</code></div>
+      </div>
+      <div class="pci" style="opacity:0.35;pointer-events:none;">
+        <div class="pci-icon">⚪</div>
+        <div class="pci-n">More soon…</div>
+        <div class="pci-d">Gemini, Custom<br>即将支持</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:12px;align-items:center;">
+      <button class="ob-btn">Start Listening</button>
+      <span style="font-size:11px;color:var(--text4)">或 <a href="#" style="color:var(--accent);text-decoration:underline;">手动配置</a></span>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SCREEN 2: MAIN WORKSPACE ===== -->
+<h2>Screen 2 — 主工作区 <span class="t">Core Experience</span></h2>
+<p class="desc">三栏布局：Sidebar (session 列表) → Conversation (timeline) → Inspector (exchange 详情)。所有现有数据保留，token usage / stop reason / sizes 新增。</p>
+
+<div class="frame">
+  <div class="tb"><div class="d r"></div><div class="d y"></div><div class="d g"></div><div class="tb-t">Agent Trace — 2 profiles active · captured: 47 exchanges</div></div>
+  <div class="app">
+
+    <!-- SIDEBAR -->
+    <div class="sb">
+      <div class="sb-h">
+        <!-- Profile Switcher -->
+        <div class="ps">
+          <div class="ps-dot"></div>
+          <div class="ps-n">Anthropic Dev</div>
+          <div class="ps-p">:8888</div>
+          <div class="ps-c">▾</div>
+        </div>
+        <!-- Search -->
+        <div class="sb-search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <span>Search sessions…</span>
+          <kbd>⌘K</kbd>
+        </div>
+        <!-- Filter Tabs -->
+        <div class="ft">
+          <div class="ft-i a">All</div>
+          <div class="ft-i">Anthropic</div>
+          <div class="ft-i">Codex</div>
+        </div>
+      </div>
+
+      <div class="sl">
+        <div class="dg">Today</div>
+        <div class="si a">
+          <div class="si-t">Fix authentication middleware</div>
+          <div class="si-m">
+            <span class="pb an">Anthropic</span>
+            <span>12 exchanges</span>
+            <span class="hb" style="font-size:9px;padding:0 4px;border:none;background:transparent;">opus-4-6</span>
+            <span class="ml">3m</span>
+          </div>
+        </div>
+        <div class="si">
+          <div class="si-t">Refactor database layer to use ORM</div>
+          <div class="si-m">
+            <span class="pb cx">Codex</span>
+            <span>8 exchanges</span>
+            <span class="hb" style="font-size:9px;padding:0 4px;border:none;background:transparent;">o3</span>
+            <span class="ml">25m</span>
+          </div>
+        </div>
+        <div class="si">
+          <div class="si-t">Add unit tests for user service</div>
+          <div class="si-m">
+            <span class="pb an">Anthropic</span>
+            <span>5 exchanges</span>
+            <span class="ml">1h</span>
+          </div>
+        </div>
+        <div class="dg">Yesterday</div>
+        <div class="si">
+          <div class="si-t">Debug WebSocket connection drops</div>
+          <div class="si-m">
+            <span class="pb cx">Codex</span>
+            <span>23 exchanges</span>
+            <span class="ml">18h</span>
+          </div>
+        </div>
+        <div class="si">
+          <div class="si-t">Implement rate limiting middleware</div>
+          <div class="si-m">
+            <span class="pb an">Anthropic</span>
+            <span>7 exchanges</span>
+            <span class="ml">22h</span>
+          </div>
+        </div>
+        <div class="dg">This Week</div>
+        <div class="si">
+          <div class="si-t">Setup CI/CD pipeline for staging</div>
+          <div class="si-m">
+            <span class="pb an">Anthropic</span>
+            <span>15 exchanges</span>
+            <span class="ml">3d</span>
+          </div>
+        </div>
+      </div>
+      <div class="sb-f">
+        <span class="sb-fb">＋ New Profile</span>
+        <span class="sb-fb">⚙ Settings</span>
+      </div>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div class="mn">
+      <div class="mn-h">
+        <div class="mn-t">Fix authentication middleware</div>
+        <span class="hb">claude-opus-4-6</span>
+        <div style="flex:1"></div>
+        <span style="font-size:10px;color:var(--text4);margin-right:4px;">127.0.0.1:8888</span>
+        <div class="hbtn" title="Copy address">📋</div>
+        <div class="hbtn" title="Raw Mode">{ }</div>
+        <div class="hbtn a" title="Inspector">☰</div>
+      </div>
+      <div class="mn-b">
+        <!-- CONVERSATION -->
+        <div class="cv">
+          <!-- System message (instructions preview) -->
+          <div class="msg sys">
+            <div class="mr">SYSTEM <span class="cp">Copy</span></div>
+            <div class="mt" style="color:var(--text2);font-size:11px;">You are an expert software engineer. Use the provided tools to read, edit, and create files…<span style="color:var(--text4);cursor:pointer;"> [+2,847 chars]</span></div>
+          </div>
+
+          <!-- User message -->
+          <div class="msg u">
+            <div class="mr">USER <span class="cp">Copy</span></div>
+            <div class="mt">The auth middleware is throwing 401 on valid JWT tokens. Can you check the token validation logic in <code>src/middleware/auth.ts</code>?</div>
+          </div>
+
+          <!-- Reasoning -->
+          <div class="rb">
+            <div class="rb-h">
+              <span class="rb-caret">▶</span>
+              💭 Thinking
+              <span class="rb-time">2.3s · 856 tokens</span>
+            </div>
+          </div>
+
+          <!-- Tool call + result pair (linked by callId) -->
+          <div class="tc-wrap">
+            <div class="tc">
+              <div class="tc-h">
+                <span class="tc-icon">⚡</span>
+                <span class="tc-n">Read</span>
+                <span class="tc-s ok">✓ 0.2s</span>
+              </div>
+              <div class="tc-b">src/middleware/auth.ts</div>
+              <div class="tc-id">call_id: toolu_01XFG…</div>
+            </div>
+          </div>
+
+          <div class="tc-wrap">
+            <div class="tc" style="border-left-color:var(--green);">
+              <div class="tc-h">
+                <span class="tc-icon" style="color:var(--green);">↩</span>
+                <span class="tc-n" style="color:var(--green);">Result</span>
+                <span class="tc-s ok">247 lines</span>
+              </div>
+              <div class="tc-b" style="max-height:60px;overflow:hidden;">import jwt from 'jsonwebtoken';
+import { config } from '../config';
+// ... (truncated)</div>
+            </div>
+          </div>
+
+          <!-- Tool call: Edit -->
+          <div class="tc-wrap">
+            <div class="tc">
+              <div class="tc-h">
+                <span class="tc-icon">⚡</span>
+                <span class="tc-n">Edit</span>
+                <span class="tc-s ok">✓ 0.1s</span>
+              </div>
+              <div class="tc-b">src/middleware/auth.ts:42-56</div>
+            </div>
+          </div>
+
+          <div class="tc-wrap">
+            <div class="tc" style="border-left-color:var(--green);">
+              <div class="tc-h">
+                <span class="tc-icon" style="color:var(--green);">↩</span>
+                <span class="tc-n" style="color:var(--green);">Result</span>
+                <span class="tc-s ok">applied</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Assistant message -->
+          <div class="msg as">
+            <div class="mr">ASSISTANT <span class="cp">Copy</span></div>
+            <div class="mt">Found the issue. The JWT validation was using <code>verify()</code> with the wrong algorithm — changed from <code>HS256</code> to <code>RS256</code> to match your RSA key pair. The middleware should now correctly validate tokens.</div>
+          </div>
+        </div>
+
+        <!-- INSPECTOR -->
+        <div class="ip">
+          <div class="ip-h">
+            <div class="ip-t">Inspector</div>
+            <div class="hbtn" style="font-size:11px;">✕</div>
+          </div>
+          <div class="ip-tabs">
+            <div class="ip-tab a">Overview</div>
+            <div class="ip-tab">Requests (12)</div>
+            <div class="ip-tab">Raw</div>
+          </div>
+          <div class="ip-body">
+            <div class="ov-r"><span class="ov-l">Provider</span><span class="pb an">Anthropic</span></div>
+            <div class="ov-r"><span class="ov-l">Profile</span><span class="ov-v">Anthropic Dev</span></div>
+            <div class="ov-r"><span class="ov-l">Model</span><span class="ov-v">claude-opus-4-6</span></div>
+            <div class="ov-r"><span class="ov-l">Endpoint</span><span class="ov-v">/v1/messages</span></div>
+            <div class="ov-r"><span class="ov-l">Status</span><span class="sb2 ok">200 OK</span></div>
+            <div class="ov-r"><span class="ov-l">Duration</span><span class="ov-v">3.2s</span></div>
+            <div class="ov-r"><span class="ov-l">Stop Reason</span><span class="ov-v">end_turn</span></div>
+            <div class="ov-r"><span class="ov-l">Request Size</span><span class="ov-v">12.4 KB</span></div>
+            <div class="ov-r"><span class="ov-l">Response Size</span><span class="ov-v">3.8 KB</span></div>
+
+            <div class="st">Token Usage</div>
+            <div class="ug">
+              <div class="uc"><div class="uc-n" style="color:var(--blue)">12,847</div><div class="uc-l">Input</div></div>
+              <div class="uc"><div class="uc-n" style="color:var(--green)">1,203</div><div class="uc-l">Output</div></div>
+              <div class="uc"><div class="uc-n" style="color:var(--pink)">856</div><div class="uc-l">Reasoning</div></div>
+              <div class="uc"><div class="uc-n" style="color:var(--orange)">14,906</div><div class="uc-l">Total</div></div>
+            </div>
+
+            <div class="st">Tools (3 registered)</div>
+            <div class="tl-i"><span class="tl-n">Read</span><span class="tl-d">Read file content</span></div>
+            <div class="tl-i"><span class="tl-n">Edit</span><span class="tl-d">Edit file content</span></div>
+            <div class="tl-i"><span class="tl-n">Bash</span><span class="tl-d">Execute shell commands</span></div>
+
+            <div class="st">Instructions</div>
+            <div style="font-size:11px;color:var(--text3);background:var(--bg);padding:8px;border-radius:4px;border:1px solid var(--border-s);max-height:80px;overflow:hidden;">You are an expert software engineer…</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SCREEN 3: INSPECTOR REQUESTS TAB ===== -->
+<h2>Screen 2b — Inspector: Requests Tab <span class="t">Exchange List</span></h2>
+<p class="desc">保留所有现有字段：method, path, status code (颜色编码), duration, model badge。</p>
+
+<div class="frame" style="max-width:360px;">
+  <div class="tb"><div class="d r"></div><div class="d y"></div><div class="d g"></div><div class="tb-t">Inspector — Requests</div></div>
+  <div style="padding:8px;">
+    <div class="rq a">
+      <span class="rq-m">POST</span>
+      <span class="rq-p">/v1/messages</span>
+      <span class="rq-sc g">200</span>
+      <span class="rq-d">3.2s</span>
+      <span class="rq-mb">opus-4-6</span>
+    </div>
+    <div class="rq">
+      <span class="rq-m">POST</span>
+      <span class="rq-p">/v1/messages</span>
+      <span class="rq-sc g">200</span>
+      <span class="rq-d">1.8s</span>
+      <span class="rq-mb">opus-4-6</span>
+    </div>
+    <div class="rq">
+      <span class="rq-m">POST</span>
+      <span class="rq-p">/v1/messages</span>
+      <span class="rq-sc o">429</span>
+      <span class="rq-d">0.1s</span>
+      <span class="rq-mb">opus-4-6</span>
+    </div>
+    <div class="rq">
+      <span class="rq-m">POST</span>
+      <span class="rq-p">/v1/messages</span>
+      <span class="rq-sc g">200</span>
+      <span class="rq-d">5.1s</span>
+      <span class="rq-mb">opus-4-6</span>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SCREEN 4: SETTINGS ===== -->
+<h2>Screen 3 — Settings <span class="t">Profile Management + Updates</span></h2>
+<p class="desc">保留所有现有字段，新增端口号显示、运行状态开关、enabled/autoStart 标记。</p>
+
+<div class="settings-frame">
+  <div class="tb"><div class="d r"></div><div class="d y"></div><div class="d g"></div><div class="tb-t">Settings</div></div>
+  <div class="sf-body">
+    <div class="sf-sec">
+      <div class="sf-sec-t">Profile Management</div>
+      <div class="sf-sec-d">2 provider profiles configured</div>
+
+      <div class="sf-pf">
+        <div class="sf-pf-dot" style="background:var(--green);box-shadow:0 0 4px rgba(52,211,153,0.5);"></div>
+        <div class="sf-pf-n">Anthropic Dev</div>
+        <div class="sf-pf-port">:8888</div>
+        <div style="flex:1"></div>
+        <div class="sf-pf-url">api.anthropic.com</div>
+        <div class="sf-pf-sw"></div>
+      </div>
+      <div class="sf-pf">
+        <div class="sf-pf-dot" style="background:var(--text4);"></div>
+        <div class="sf-pf-n">Codex Dev</div>
+        <div class="sf-pf-port">:8889</div>
+        <div style="flex:1"></div>
+        <div class="sf-pf-url">chatgpt.com/…/codex</div>
+        <div class="sf-pf-sw off"></div>
+      </div>
+
+      <div style="margin-top:8px;">
+        <span class="sb-fb" style="font-size:11px;color:var(--accent);">＋ Add Profile</span>
+      </div>
+    </div>
+
+    <div class="sf-sec" style="border-top:1px solid var(--border);padding-top:16px;">
+      <div class="sf-sec-t">Automatic Updates</div>
+      <div class="sf-ver">Version 0.1.6</div>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:8px;">
+        <button class="sf-btn">Check for updates</button>
+        <span style="font-size:11px;color:var(--green);">✓ You are on the latest version</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SCREEN 5: COMMAND PALETTE ===== -->
+<h2>Screen 4 — Command Palette <span class="t">⌘K</span></h2>
+<p class="desc">保留所有搜索功能：session (title + provider), profile (name + start/stop), actions (clear history)。</p>
+
+<div class="cp-frame">
+  <div class="cp-search">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <span>Search sessions, profiles, or actions…</span>
+  </div>
+  <div class="cp-group">
+    <div class="cp-gl">Sessions</div>
+    <div class="cp-i a"><span class="cp-i-t">Fix authentication middleware</span><span class="cp-i-r"><span class="pb an" style="font-size:8px;">Anthropic</span></span></div>
+    <div class="cp-i"><span class="cp-i-t">Refactor database layer to use ORM</span><span class="cp-i-r"><span class="pb cx" style="font-size:8px;">Codex</span></span></div>
+    <div class="cp-i"><span class="cp-i-t">Add unit tests for user service</span><span class="cp-i-r"><span class="pb an" style="font-size:8px;">Anthropic</span></span></div>
+  </div>
+  <div class="cp-group">
+    <div class="cp-gl">Profiles</div>
+    <div class="cp-i"><span class="cp-i-t">Anthropic Dev</span><span class="cp-i-r" style="color:var(--green);">Running</span></div>
+    <div class="cp-i"><span class="cp-i-t">Codex Dev</span><span class="cp-i-r">Start</span></div>
+  </div>
+  <div class="cp-group" style="border-top:1px solid var(--border);padding-top:4px;">
+    <div class="cp-gl">Actions</div>
+    <div class="cp-i"><span class="cp-i-t" style="color:var(--red);">Clear history</span></div>
+  </div>
+</div>
+
+<hr>
+
+<h2>新增的数据展示 <span class="t">Previously Hidden</span></h2>
+<p class="desc">以下数据 main process 已经捕获并存储，但当前 UI 没有展示。在新设计中通过 Inspector Overview 和 conversation 增强来展示。</p>
+
+<div class="info-grid">
+  <div class="info-card">
+    <h4>Inspector Overview 新增</h4>
+    <ul>
+      <li><b>Token Usage</b> — inputTokens, outputTokens, reasoningTokens (卡片式)</li>
+      <li><b>Stop Reason</b> — end_turn, max_tokens, tool_use 等</li>
+      <li><b>Request/Response Size</b> — 格式化显示 (KB)</li>
+      <li><b>Profile Name</b> — 来自哪个 profile 的捕获</li>
+      <li><b>Endpoint Kind</b> — messages / responses</li>
+    </ul>
+  </div>
+  <div class="info-card">
+    <h4>Conversation 增强</h4>
+    <ul>
+      <li><b>Tool callId 关联</b> — tool-call 和 tool-result 通过 callId 配对显示</li>
+      <li><b>isError 标记</b> — tool-result 的 isError 用红色状态标记</li>
+      <li><b>Reasoning 耗时</b> — 折叠标题显示 thinking 时长和 token 数</li>
+      <li><b>Instructions 预览</b> — system 消息在 conversation 顶部显示</li>
+    </ul>
+  </div>
+  <div class="info-card">
+    <h4>Settings 增强</h4>
+    <ul>
+      <li><b>端口号</b> — 每个 profile 显示监听端口</li>
+      <li><b>运行状态开关</b> — 直接在 settings 里启停 profile</li>
+      <li><b>enabled / autoStart</b> — 对应 ConnectionProfile 的两个字段</li>
+    </ul>
+  </div>
+</div>
+
+</div>
+</body>
+</html>

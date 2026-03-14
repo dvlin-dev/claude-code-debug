@@ -1,17 +1,22 @@
-import { useAppStore } from "../stores/app-store";
+import { useProfileStore } from "../stores/profile-store";
 
 export function ProxyInstructions() {
-  const { proxyAddress } = useAppStore();
+  const profiles = useProfileStore((state) => state.profiles);
+  const statuses = useProfileStore((state) => state.statuses);
+  const runningProfile = profiles.find((profile) => statuses[profile.id]?.isRunning);
+  const proxyAddress = runningProfile
+    ? `http://127.0.0.1:${statuses[runningProfile.id]?.port ?? runningProfile.localPort}`
+    : null;
 
   if (!proxyAddress) return null;
 
   return (
-    <div className="rounded-md border bg-muted/50 p-4 text-sm space-y-2">
-      <p className="font-medium">Connect Claude Code</p>
+    <div className="border bg-muted/50 p-4 text-sm space-y-2">
+      <p className="font-medium">Connect Your Agent</p>
       <p className="text-muted-foreground">
-        Set your Claude Code to use this proxy address:
+        Configure your local agent client to use this proxy address:
       </p>
-      <code className="block rounded bg-background px-3 py-2 font-mono text-xs">
+      <code className="block bg-background px-3 py-2 font-mono text-xs">
         {proxyAddress}
       </code>
     </div>

@@ -1,6 +1,3 @@
-export const DEFAULT_PROXY_PORT = 8888;
-export const MAX_REQUESTS = 2000;
-
-export const DEFAULT_SETTINGS = {
-  targetUrl: "",
-} as const;
+export const DEFAULT_PROFILE_PORT_START = 8888;
+export const DEFAULT_PROVIDER_ID = "anthropic" as const;
+export const DEFAULT_MAX_STORED_EXCHANGES = 5000;

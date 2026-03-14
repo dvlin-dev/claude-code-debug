@@ -1,43 +1,47 @@
 import { contextBridge, ipcRenderer } from "electron";
 import { IPC } from "../shared/ipc-channels";
 import type {
-  AppSettings,
-  CaptureUpdatePayload,
-  SessionSummary,
-  RequestRecord,
-} from "../shared/types";
+  ConnectionProfile,
+  ExchangeDetailVM,
+  ProfileStatusChangedEvent,
+  SessionListFilter,
+  SessionListItemVM,
+  SessionTraceVM,
+  TraceCapturedEvent,
+  TraceResetEvent,
+} from "../shared/contracts";
+import type { ElectronAPI } from "../shared/electron-api";
 import type { UpdateState } from "../shared/update";
 
-export const electronAPI = {
-  getSettings: (): Promise<AppSettings> =>
-    ipcRenderer.invoke(IPC.GET_SETTINGS),
+export const electronAPI: ElectronAPI = {
+  getProfiles: (): Promise<ConnectionProfile[]> =>
+    ipcRenderer.invoke(IPC.GET_PROFILES),
 
-  saveSettings: (input: { targetUrl: string }): Promise<AppSettings> =>
-    ipcRenderer.invoke(IPC.SAVE_SETTINGS, input),
+  saveProfiles: (input: ConnectionProfile[]): Promise<ConnectionProfile[]> =>
+    ipcRenderer.invoke(IPC.SAVE_PROFILES, input),
 
-  toggleListening: (
-    value: boolean,
-  ): Promise<{ isRunning: boolean; address: string | null; port: number }> =>
-    ipcRenderer.invoke(IPC.TOGGLE_LISTENING, value),
+  startProfile: (profileId: string): Promise<void> =>
+    ipcRenderer.invoke(IPC.START_PROFILE, profileId),
 
-  getProxyStatus: (): Promise<{ isRunning: boolean }> =>
-    ipcRenderer.invoke(IPC.GET_PROXY_STATUS),
+  stopProfile: (profileId: string): Promise<void> =>
+    ipcRenderer.invoke(IPC.STOP_PROFILE, profileId),
 
-  listSessions: (): Promise<SessionSummary[]> =>
-    ipcRenderer.invoke(IPC.LIST_SESSIONS),
+  getProfileStatuses: (): Promise<
+    Record<string, { isRunning: boolean; port: number | null }>
+  > => ipcRenderer.invoke(IPC.GET_PROFILE_STATUSES),
 
-  getSessionRequests: (sessionId: string): Promise<RequestRecord[]> =>
-    ipcRenderer.invoke(IPC.GET_SESSION_REQUESTS, sessionId),
+  listSessions: (
+    filter?: SessionListFilter,
+  ): Promise<SessionListItemVM[]> =>
+    ipcRenderer.invoke(IPC.LIST_SESSIONS, filter ?? {}),
 
-  getRequestDetail: (requestId: string): Promise<RequestRecord | null> =>
-    ipcRenderer.invoke(IPC.GET_REQUEST_DETAIL, requestId),
+  getSessionTrace: (sessionId: string): Promise<SessionTraceVM> =>
+    ipcRenderer.invoke(IPC.GET_SESSION_TRACE, sessionId),
 
-  clearData: (): Promise<void> => ipcRenderer.invoke(IPC.CLEAR_DATA),
+  getExchangeDetail: (exchangeId: string): Promise<ExchangeDetailVM | null> =>
+    ipcRenderer.invoke(IPC.GET_EXCHANGE_DETAIL, exchangeId),
 
-  search: (
-    query: string,
-  ): Promise<{ sessions: SessionSummary[]; requests: RequestRecord[] }> =>
-    ipcRenderer.invoke(IPC.SEARCH, query),
+  clearHistory: (): Promise<void> => ipcRenderer.invoke(IPC.CLEAR_HISTORY),
 
   getUpdateState: (): Promise<UpdateState> =>
     ipcRenderer.invoke(IPC.GET_UPDATE_STATE),
@@ -51,19 +55,40 @@ export const electronAPI = {
   quitAndInstallUpdate: (): Promise<void> =>
     ipcRenderer.invoke(IPC.QUIT_AND_INSTALL_UPDATE),
 
-  onCaptureUpdated: (cb: (payload: CaptureUpdatePayload) => void): (() => void) => {
-    const handler = (
-      _e: Electron.IpcRendererEvent,
-      payload: CaptureUpdatePayload,
-    ) => cb(payload);
-    ipcRenderer.on(IPC.CAPTURE_UPDATED, handler);
-    return () => ipcRenderer.removeListener(IPC.CAPTURE_UPDATED, handler);
-  },
-
   onProxyError: (cb: (error: string) => void): (() => void) => {
     const handler = (_e: Electron.IpcRendererEvent, error: string) => cb(error);
     ipcRenderer.on(IPC.PROXY_ERROR, handler);
     return () => ipcRenderer.removeListener(IPC.PROXY_ERROR, handler);
+  },
+
+  onTraceCaptured: (cb: (payload: TraceCapturedEvent) => void): (() => void) => {
+    const handler = (
+      _e: Electron.IpcRendererEvent,
+      payload: TraceCapturedEvent,
+    ) => cb(payload);
+    ipcRenderer.on(IPC.TRACE_CAPTURED, handler);
+    return () => ipcRenderer.removeListener(IPC.TRACE_CAPTURED, handler);
+  },
+
+  onTraceReset: (cb: (payload: TraceResetEvent) => void): (() => void) => {
+    const handler = (
+      _e: Electron.IpcRendererEvent,
+      payload: TraceResetEvent,
+    ) => cb(payload);
+    ipcRenderer.on(IPC.TRACE_RESET, handler);
+    return () => ipcRenderer.removeListener(IPC.TRACE_RESET, handler);
+  },
+
+  onProfileStatusChanged: (
+    cb: (payload: ProfileStatusChangedEvent) => void,
+  ): (() => void) => {
+    const handler = (
+      _e: Electron.IpcRendererEvent,
+      payload: ProfileStatusChangedEvent,
+    ) => cb(payload);
+    ipcRenderer.on(IPC.PROFILE_STATUS_CHANGED, handler);
+    return () =>
+      ipcRenderer.removeListener(IPC.PROFILE_STATUS_CHANGED, handler);
   },
 
   onUpdateStateChanged: (cb: (state: UpdateState) => void): (() => void) => {
@@ -75,5 +100,3 @@ export const electronAPI = {
 };
 
 contextBridge.exposeInMainWorld("electronAPI", electronAPI);
-
-export type ElectronAPI = typeof electronAPI;

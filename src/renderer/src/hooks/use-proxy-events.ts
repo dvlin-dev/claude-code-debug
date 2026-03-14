@@ -2,24 +2,31 @@ import { useEffect } from "react";
 import { toast } from "sonner";
 import { getElectronAPI } from "../lib/electron-api";
 import { useSessionStore } from "../stores/session-store";
-import { useRequestStore } from "../stores/request-store";
+import { useTraceStore } from "../stores/trace-store";
+import { useProfileStore } from "../stores/profile-store";
 
 export function useProxyEvents() {
-  const updateSessions = useSessionStore((s) => s.updateSessions);
-  const refreshSessionIfSelected = useRequestStore(
-    (s) => s.refreshSessionIfSelected,
-  );
+  const upsertSession = useSessionStore((s) => s.upsertSession);
+  const resetSessions = useSessionStore((s) => s.reset);
+  const loadTrace = useTraceStore((state) => state.loadTrace);
+  const setStatuses = useProfileStore((state) => state.setStatuses);
 
   useEffect(() => {
     const api = getElectronAPI();
 
-    const unsubCapture = api.onCaptureUpdated((payload) => {
-      updateSessions(payload.sessions);
+    const unsubCapture = api.onTraceCaptured((payload) => {
+      upsertSession(payload.updatedSession);
       const selectedSessionId = useSessionStore.getState().selectedSessionId;
-      void refreshSessionIfSelected(
-        payload.updatedSessionId,
-        selectedSessionId,
-      );
+      if (payload.updatedSession.sessionId === selectedSessionId) {
+        void loadTrace(payload.updatedSession.sessionId);
+      }
+    });
+    const unsubReset = api.onTraceReset(() => {
+      resetSessions();
+    });
+
+    const unsubProfileStatus = api.onProfileStatusChanged((payload) => {
+      setStatuses(payload.statuses);
     });
 
     const unsubError = api.onProxyError((error) => {
@@ -28,7 +35,9 @@ export function useProxyEvents() {
 
     return () => {
       unsubCapture();
+      unsubReset();
+      unsubProfileStatus();
       unsubError();
     };
-  }, [refreshSessionIfSelected, updateSessions]);
+  }, [loadTrace, resetSessions, setStatuses, upsertSession]);
 }

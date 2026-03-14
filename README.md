@@ -2,44 +2,55 @@
 
 [中文](./README.zh-CN.md)
 
-A desktop app that intercepts Claude Code's API traffic, letting you see exactly what happens under the hood — system prompts, tool calls, thinking blocks, and the full conversation flow.
+A desktop app that captures and inspects agent traffic from multiple providers. The current runtime is profile-based: each profile binds one provider, one upstream base URL, and one local listener port.
 
 ## What It Does
 
-Claude Code (Anthropic's CLI) sends requests to the Claude API. This app sits between them as a transparent proxy, capturing every request and response without modifying anything.
+Agent Trace runs a local listener in front of agent tooling such as Claude Code and Codex. Requests are forwarded upstream, normalized in the main process, grouped into sessions, persisted to SQLite, and rendered as provider-aware traces in the renderer.
 
 ```text
-Claude Code  ──▶  Proxy (localhost:8888)  ──▶  Anthropic API
-                         │
-                   Capture & Display
-                         │
-                   Desktop App UI
+Agent Client  ──▶  Profile Listener (localhost:8888/8889/...)  ──▶  Upstream Provider
+                               │
+                         Capture + Normalize
+                               │
+                      SQLite + Query Services
+                               │
+                         Electron Renderer
 ```
 
 ## What Data You Can See
 
 | Data | Source | How It's Captured |
 |------|--------|-------------------|
-| **System Prompt** | `request.body.system` | Full system prompt including Claude Code's injected instructions, memory, CLAUDE.md content |
-| **Messages** | `request.body.messages` | Complete conversation history — every user message, assistant response, tool calls and results |
-| **Tools** | `request.body.tools` | All tool definitions Claude Code registers (Read, Write, Bash, Glob, Grep, etc.) |
-| **Thinking** | `response` SSE stream | Extended thinking blocks (`thinking_delta` events) |
-| **Tool Use** | `response` SSE stream | Which tools the assistant calls, with what arguments |
-| **Model & Metadata** | `request.body.model` + `request.body.metadata` | Model used, session identifier, token usage |
-| **Headers** | `request.headers` | API version, SDK version, beta features enabled |
-| **Timing** | Measured by proxy | Request duration, request/response sizes |
+| **Instructions** | Normalized request blocks | System or developer guidance extracted by the provider adapter |
+| **Messages** | Normalized request/response messages | User turns, assistant turns, reasoning blocks, tool calls, tool results |
+| **Tools** | Request body | Registered tools and JSON Schemas |
+| **Headers** | Raw request headers | Provider-specific routing and session hints |
+| **Usage** | Response terminal events | Token accounting when the provider exposes it |
+| **Timing & Sizes** | Listener + forwarder | Duration, request size, response size |
+| **Raw Payloads** | Stored raw request/response body | Inspector tabs for debugging protocol details |
 
 ## How It Works
 
-**Proxy Layer** — A Node.js HTTP server on `127.0.0.1:8888`. Receives Claude Code requests, forwards them to the Anthropic API, and streams responses back. SSE (Server-Sent Events) responses are streamed through in real-time while being collected on the side for storage.
+**Profiles** — A profile defines `providerId`, `upstreamBaseUrl`, `localPort`, and startup behavior. Multiple profiles can run side-by-side.
 
-**Session Grouping** — Claude Code embeds a session UUID in `metadata.user_id` of every request (`user_<hash>_account__session_<uuid>`). The proxy extracts this UUID to group requests into conversations. For non-Claude-Code clients, it falls back to content-based matching (system prompt hash + message superset detection).
+**Transport Layer** — The main process owns local listeners and forwarding. Each listener captures one full exchange as raw request/response data.
 
-**Storage** — All captured data is persisted to a local SQLite database (`~/Library/Application Support/agent-trace/history.db`). Auto-prunes after 2000 requests.
+**Protocol Adapters** — Provider-specific parsing happens only in the main process. Adapters normalize raw exchanges, build inspector documents, match sessions, and assemble timelines.
 
-**Upgrade Compatibility** — Existing installs keep the original Electron `appId` for in-place upgrades. On first launch after the rename, Agent Trace copies local settings and history from the legacy `claude-code-debug` user-data folder when needed.
+**Storage + Query** — Raw exchanges, normalized exchanges, and inspector documents are stored in SQLite. Query services return view models to the renderer rather than raw rows.
 
-**UI** — Electron + React app with a ChatGPT-style conversation view. Left sidebar shows sessions, right side shows the rendered conversation with an optional Inspector panel for raw request/response data.
+**UI** — Renderer never parses provider bodies. It only consumes `SessionListItemVM`, `SessionTraceVM`, and `ExchangeDetailVM`.
+
+## Supported Providers
+
+- `anthropic`
+  - upstream default: `https://api.anthropic.com`
+  - protocol adapter: `anthropic-messages`
+- `codex`
+  - upstream default: `https://chatgpt.com/backend-api/codex`
+  - protocol adapter: `openai-responses`
+  - current listener flow captures the HTTP fallback path after Codex probes `/responses` over WebSocket
 
 ## Setup
 
@@ -57,14 +68,21 @@ pnpm build
 pnpm dist:mac
 ```
 
-Configure Claude Code to use the proxy:
+Create a profile in the app, start its listener, then point the client at the listener address.
+
+Example: Anthropic profile on `127.0.0.1:8888`
 
 ```bash
-# Set the proxy as Claude Code's API endpoint
 export ANTHROPIC_BASE_URL=http://127.0.0.1:8888
 ```
 
-Then use Claude Code normally. All requests will appear in the app.
+Example: Codex profile on `127.0.0.1:8889`
+
+```bash
+export OPENAI_BASE_URL=http://127.0.0.1:8889
+```
+
+Then run the client normally. Captured sessions will appear in the app under the matching provider/profile.
 
 ## macOS Release
 

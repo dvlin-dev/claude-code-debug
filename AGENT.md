@@ -1,10 +1,10 @@
-# AGENT.md
+# CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Claude Code when working with code in this repository.
 
 ## Project Overview
 
-Electron desktop app that intercepts Claude Code API traffic via a local HTTP proxy (127.0.0.1:8888), captures requests/responses, groups them into conversations, and renders them in a chat-style UI.
+Agent Trace — an Electron desktop app that captures and inspects agent traffic from multiple providers. Profile-based runtime: each profile binds one provider, one upstream base URL, and one local listener port. Provider-specific parsing is isolated in the main process; the renderer only consumes normalized view models.
 
 ## Development Commands
 
@@ -43,47 +43,73 @@ Electron requires three separate builds (configured in `electron.vite.config.ts`
 ### Data Flow
 
 ```
-Claude Code → Proxy (server.ts) → Forward (forward.ts) → Anthropic API
-                    ↓
-              Capture request/response
-                    ↓
-         SessionManager (session-manager.ts)
-                    ↓
-         HistoryStore (history-store.ts) → SQLite
-                    ↓
-              IPC → Renderer → Zustand → React
+Agent Client
+  └─▶ Profile Listener (local port)
+        └─▶ Forwarder → Upstream Provider
+              │
+              ▼
+        CapturedExchange
+              │
+              ▼
+        ProtocolAdapter
+          normalize + buildInspector
+              │
+              ▼
+        CapturePipeline
+          SessionResolver → SQLite Repositories
+              │
+              ▼
+        Query Services → IPC / Preload → Renderer VM
 ```
 
 ### Session Grouping Strategy
 
-Priority order for grouping requests into conversations:
+Each protocol adapter owns a `SessionMatcher`. Resolution priority:
 
-1. **metadata.user_id** — Claude Code embeds `_session_<UUID>` in every request
-2. **System hash + message superset** — Same system prompt AND messages grow
-3. **Message superset only** — Messages grow regardless of system prompt
-4. **No match** — Create new session
+**Anthropic (`anthropic-messages`):**
+1. `metadata.user_id` — Claude Code embeds `_session_<UUID>` in every request
+2. System hash + message superset — Same system prompt AND messages grow
+3. Message superset only — Messages grow regardless of system prompt
+4. No match → Create new session
+
+**Codex (`openai-responses`):**
+1. `session_id` request header
+2. `conversation` field in request body
+3. No match → Create new session
 
 ### Key Directories
 
-- `src/shared/` — Types and utilities used by both main and renderer
-  - `types.ts` — Core interfaces: AppSettings, SessionSummary, RequestRecord
-  - `defaults.ts` — Constants: DEFAULT_PROXY_PORT=8888, MAX_REQUESTS=2000
-  - `ipc-channels.ts` — IPC channel name constants
-- `src/main/proxy/` — HTTP proxy implementation
-  - `server.ts` — HTTP server, SSE streaming, request capture
-  - `forward.ts` — Forward requests to target (http/https auto-detect)
-  - `stream-collector.ts` — Buffer SSE chunks for storage
-- `src/main/session/` — Session grouping logic
-  - `session-manager.ts` — Assign requests to sessions
-  - `derive-session.ts` — Content-based matching fallback
-- `src/main/store/` — Data persistence
-  - `database.ts` — SQLite initialization and schema
-  - `history-store.ts` — Request/session CRUD operations
-  - `settings-store.ts` — JSON settings file read/write
-- `src/renderer/src/stores/` — Zustand state management
-  - `app-store.ts` — Settings, listening state, proxy address
-  - `session-store.ts` — Session list, selection, search
-  - `request-store.ts` — Request list, inspector, raw mode
+- `src/shared/contracts/` — All cross-layer type contracts
+  - `provider.ts` — `ProviderId`, `ProviderDefinition`, `ProtocolAdapterId`
+  - `profile.ts` — `ConnectionProfile`
+  - `capture.ts` — `CapturedExchange`, `CapturedBody`
+  - `normalized.ts` — `NormalizedExchange`, `NormalizedMessage`, `EndpointKind`
+  - `inspector.ts` — `InspectorDocument`, `InspectorSection`
+  - `session.ts` — `SessionMatcher`, `TimelineAssembler`, `SessionTimeline`
+  - `protocol.ts` — `ProtocolAdapter` interface
+  - `view-models.ts` — `SessionListItemVM`, `SessionTraceVM`, `ExchangeDetailVM`
+  - `events.ts` — `TraceCapturedEvent` (incremental), `ProfileStatusChangedEvent`
+- `src/shared/defaults.ts` — Constants: `DEFAULT_PROFILE_PORT_START=8888`, `DEFAULT_MAX_STORED_EXCHANGES=5000`
+- `src/shared/ipc-channels.ts` — IPC channel name constants
+- `src/main/bootstrap/app-bootstrap.ts` — Wires everything: catalog, adapters, pipeline, queries, proxy manager
+- `src/main/transport/` — HTTP listener, forwarder, proxy manager (protocol-unaware)
+- `src/main/providers/definitions/` — Provider metadata (anthropic, codex)
+- `src/main/providers/protocol-adapters/` — Per-protocol: normalize, buildInspector, sessionMatcher, timelineAssembler
+- `src/main/pipeline/` — `CapturePipeline` (normalize → inspect → resolve → persist), `SessionResolver`
+- `src/main/storage/` — SQLite schema, repositories (session, exchange), profile-store (JSON), history-maintenance
+- `src/main/queries/` — `SessionQueryService`, `ExchangeQueryService` → return view models
+- `src/main/ipc/register-ipc.ts` — All IPC handlers
+- `src/preload/index.ts` — Electron preload bridge
+- `src/renderer/src/stores/` — Zustand: app-store, profile-store, session-store, trace-store
+- `src/renderer/src/hooks/use-proxy-events.ts` — Push event handler
+- `src/renderer/src/features/profiles/` — Profile setup UI
+
+## Supported Providers
+
+- `anthropic` — adapter: `anthropic-messages`, default upstream: `https://api.anthropic.com`
+- `codex` — adapter: `openai-responses`, default upstream: `https://chatgpt.com/backend-api/codex`
+
+No other providers are currently implemented. Adding a new provider requires: a definition in `definitions/`, an adapter in `protocol-adapters/`, and registering both in `provider-catalog.ts` and `app-bootstrap.ts`.
 
 ## Critical Gotchas
 
@@ -107,9 +133,9 @@ Priority order for grouping requests into conversations:
 
 ## Storage Locations
 
-- **SQLite database**: `~/Library/Application Support/claude-code-debug/history.db` (macOS)
-- **Settings file**: `~/Library/Application Support/claude-code-debug/settings.json`
-- **Auto-prunes**: After 2000 requests (MAX_REQUESTS constant)
+- **SQLite database**: `~/Library/Application Support/agent-trace/agent-trace.db` (macOS)
+- **Profiles file**: `~/Library/Application Support/agent-trace/profiles.json`
+- **Auto-prunes**: After 5000 exchanges (`DEFAULT_MAX_STORED_EXCHANGES`)
 
 ## Release Process
 
@@ -130,13 +156,17 @@ Required GitHub secrets for signing/notarization:
 
 ## Proxy Configuration
 
-Users configure Claude Code to use the proxy:
+Users create a profile in the app, start its listener, then point the agent client at the local address:
 
 ```bash
+# Anthropic profile on port 8888
 export ANTHROPIC_BASE_URL=http://127.0.0.1:8888
+
+# Codex profile on port 8889
+export OPENAI_BASE_URL=http://127.0.0.1:8889
 ```
 
-The proxy preserves the TARGET_URL pathname and appends the original request path:
-- TARGET_URL: `http://example.com/api`
+The forwarder preserves the upstream pathname and appends the original request path:
+- Upstream: `http://example.com/api`
 - Request: `/v1/messages?beta=true`
 - Forwarded to: `http://example.com/api/v1/messages?beta=true`

@@ -31,23 +31,45 @@ describe("Project Structure", () => {
     "components.json",
 
     // Shared layer
-    "src/shared/types.ts",
     "src/shared/defaults.ts",
     "src/shared/ipc-channels.ts",
     "src/shared/strip-xml.ts",
-    "src/shared/extract-user-text.ts",
+    "src/shared/electron-api.ts",
+    "src/shared/contracts/provider.ts",
+    "src/shared/contracts/profile.ts",
+    "src/shared/contracts/capture.ts",
+    "src/shared/contracts/normalized.ts",
+    "src/shared/contracts/inspector.ts",
+    "src/shared/contracts/session.ts",
+    "src/shared/contracts/protocol.ts",
+    "src/shared/contracts/view-models.ts",
+    "src/shared/contracts/events.ts",
+    "src/shared/contracts/index.ts",
+    "src/shared/electron-api.ts",
 
     // Main process
     "src/main/index.ts",
-    "src/main/store/settings-store.ts",
-    "src/main/store/database.ts",
-    "src/main/store/history-store.ts",
-    "src/main/proxy/server.ts",
-    "src/main/proxy/forward.ts",
-    "src/main/proxy/stream-collector.ts",
-    "src/main/session/derive-session.ts",
-    "src/main/session/session-manager.ts",
+    "src/main/bootstrap/app-bootstrap.ts",
+    "src/main/capture/body-codec.ts",
     "src/main/ipc/register-ipc.ts",
+    "src/main/providers/provider-catalog.ts",
+    "src/main/providers/format-provider-label.ts",
+    "src/main/providers/protocol-adapters/shared/parse-utils.ts",
+    "src/main/providers/protocol-adapters/shared/build-inspector-sections.ts",
+    "src/main/providers/protocol-adapters/anthropic-messages/index.ts",
+    "src/main/providers/protocol-adapters/openai-responses/index.ts",
+    "src/main/pipeline/capture-pipeline.ts",
+    "src/main/pipeline/session-resolver.ts",
+    "src/main/queries/session-query-service.ts",
+    "src/main/queries/exchange-query-service.ts",
+    "src/main/storage/history-maintenance-service.ts",
+    "src/main/storage/profile-store.ts",
+    "src/main/storage/sqlite.ts",
+    "src/main/storage/session-repository.ts",
+    "src/main/storage/exchange-repository.ts",
+    "src/main/transport/forwarder.ts",
+    "src/main/transport/listener.ts",
+    "src/main/transport/proxy-manager.ts",
 
     // Preload
     "src/preload/index.ts",
@@ -59,12 +81,13 @@ describe("Project Structure", () => {
     "src/renderer/src/App.tsx",
     "src/renderer/src/index.css",
     "src/renderer/src/stores/app-store.ts",
+    "src/renderer/src/stores/profile-store.ts",
     "src/renderer/src/stores/session-store.ts",
-    "src/renderer/src/stores/request-store.ts",
+    "src/renderer/src/stores/trace-store.ts",
     "src/renderer/src/lib/electron-api.ts",
-    "src/renderer/src/lib/parse-claude-body.ts",
-    "src/renderer/src/pages/setup-page.tsx",
     "src/renderer/src/pages/workspace-page.tsx",
+    "src/renderer/src/features/profiles/profile-form.tsx",
+    "src/renderer/src/features/profiles/profile-setup-page.tsx",
     "src/renderer/src/components/status-bar.tsx",
     "src/renderer/src/components/session-sidebar.tsx",
     "src/renderer/src/components/main-content.tsx",
@@ -74,6 +97,7 @@ describe("Project Structure", () => {
     "src/renderer/src/components/message-block.tsx",
     "src/renderer/src/components/content-block.tsx",
     "src/renderer/src/components/command-palette.tsx",
+    "src/renderer/src/components/error-boundary.tsx",
     "src/renderer/src/hooks/use-proxy-events.ts",
   ];
 
@@ -140,9 +164,19 @@ describe("Dependency Layer Enforcement", () => {
 
   it("shared layer does not import from main or renderer", () => {
     const sharedFiles = [
-      "src/shared/types.ts",
       "src/shared/defaults.ts",
       "src/shared/ipc-channels.ts",
+      "src/shared/electron-api.ts",
+      "src/shared/contracts/provider.ts",
+      "src/shared/contracts/profile.ts",
+      "src/shared/contracts/capture.ts",
+      "src/shared/contracts/normalized.ts",
+      "src/shared/contracts/inspector.ts",
+      "src/shared/contracts/session.ts",
+      "src/shared/contracts/protocol.ts",
+      "src/shared/contracts/view-models.ts",
+      "src/shared/contracts/events.ts",
+      "src/shared/contracts/index.ts",
     ];
 
     for (const file of sharedFiles) {
@@ -172,6 +206,46 @@ describe("Dependency Layer Enforcement", () => {
       ).toEqual([]);
     }
   });
+
+  it("renderer only uses normalized message block names", () => {
+    const rendererFiles = [
+      "src/renderer/src/components/conversation-view.tsx",
+      "src/renderer/src/components/content-block.tsx",
+      "src/renderer/src/components/message-block.tsx",
+    ];
+
+    for (const file of rendererFiles) {
+      const content = fs.readFileSync(path.join(ROOT, file), "utf-8");
+      expect(content, `${file} should not use Anthropic block names`).not.toMatch(
+        /tool_use|tool_result/,
+      );
+    }
+  });
+
+  it("source tree does not expose unimplemented providers", () => {
+    expect(exists("src/main/providers/definitions/gemini.ts")).toBe(false);
+
+    const providerContract = fs.readFileSync(
+      path.join(ROOT, "src/shared/contracts/provider.ts"),
+      "utf-8",
+    );
+    expect(providerContract).not.toContain('"gemini"');
+    expect(providerContract).not.toContain('"google-generative-language"');
+  });
+
+  it("renderer copy is provider-neutral", () => {
+    const rendererFiles = [
+      "src/renderer/src/components/proxy-instructions.tsx",
+      "src/renderer/src/components/empty-state.tsx",
+    ];
+
+    for (const file of rendererFiles) {
+      const content = fs.readFileSync(path.join(ROOT, file), "utf-8");
+      expect(content, `${file} should not mention Claude Code`).not.toContain(
+        "Claude Code",
+      );
+    }
+  });
 });
 
 describe("IPC Contract Integrity", () => {
@@ -198,7 +272,9 @@ describe("IPC Contract Integrity", () => {
 
     // Extract invoke channels (not push events)
     const invokeChannels =
-      ipcContent.match(/(?:GET_|SAVE_|TOGGLE_|LIST_|CLEAR_|SEARCH)[A-Z_]+/g) || [];
+      ipcContent.match(
+        /(?:GET_|SAVE_|START_|STOP_|LIST_|CLEAR_|CHECK_|DOWNLOAD_|QUIT_)[A-Z_]+/g,
+      ) || [];
 
     for (const channel of invokeChannels) {
       expect(

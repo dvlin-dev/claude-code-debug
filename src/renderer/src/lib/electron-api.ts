@@ -1,34 +1,37 @@
-import type {
-  AppSettings,
-  CaptureUpdatePayload,
-  SessionSummary,
-  RequestRecord,
-} from "../../../shared/types";
-import type { UpdateState } from "../../../shared/update";
-
-export interface ElectronAPI {
-  getSettings(): Promise<AppSettings>;
-  saveSettings(input: { targetUrl: string }): Promise<AppSettings>;
-  toggleListening(
-    value: boolean,
-  ): Promise<{ isRunning: boolean; address: string | null; port: number }>;
-  getProxyStatus(): Promise<{ isRunning: boolean }>;
-  listSessions(): Promise<SessionSummary[]>;
-  getSessionRequests(sessionId: string): Promise<RequestRecord[]>;
-  getRequestDetail(requestId: string): Promise<RequestRecord | null>;
-  clearData(): Promise<void>;
-  search(
-    query: string,
-  ): Promise<{ sessions: SessionSummary[]; requests: RequestRecord[] }>;
-  getUpdateState(): Promise<UpdateState>;
-  checkForUpdates(): Promise<UpdateState>;
-  downloadUpdate(): Promise<UpdateState>;
-  quitAndInstallUpdate(): Promise<void>;
-  onCaptureUpdated(cb: (payload: CaptureUpdatePayload) => void): () => void;
-  onProxyError(cb: (error: string) => void): () => void;
-  onUpdateStateChanged(cb: (state: UpdateState) => void): () => void;
-}
+import type { ElectronAPI } from "../../../shared/electron-api";
 
 export function getElectronAPI(): ElectronAPI {
-  return (window as Window & { electronAPI: ElectronAPI }).electronAPI;
+  const api = (window as Window & { electronAPI?: Partial<ElectronAPI> }).electronAPI;
+  if (!api) {
+    throw new Error("Missing window.electronAPI preload bridge");
+  }
+
+  const requiredMethods: Array<keyof ElectronAPI> = [
+    "getProfiles",
+    "saveProfiles",
+    "startProfile",
+    "stopProfile",
+    "getProfileStatuses",
+    "listSessions",
+    "getSessionTrace",
+    "getExchangeDetail",
+    "clearHistory",
+    "getUpdateState",
+    "checkForUpdates",
+    "downloadUpdate",
+    "quitAndInstallUpdate",
+    "onProxyError",
+    "onTraceCaptured",
+    "onTraceReset",
+    "onProfileStatusChanged",
+    "onUpdateStateChanged",
+  ];
+
+  for (const method of requiredMethods) {
+    if (typeof api[method] !== "function") {
+      throw new Error(`Missing electronAPI.${String(method)} preload bridge`);
+    }
+  }
+
+  return api as ElectronAPI;
 }
