@@ -21,15 +21,15 @@ export function ConversationHeader() {
   const title = trace ? stripXmlTags(trace.title) : "Conversation";
 
   return (
-    <div className="flex items-center gap-2 border-b px-4 py-2 shrink-0">
+    <div className="flex items-center gap-2 border-b px-4 py-3 shrink-0">
       <h2 className="text-sm font-medium truncate flex-1">{title}</h2>
       {model && (
-        <Badge variant="secondary" className="text-[10px] px-1.5 py-0 shrink-0">
+        <Badge variant="secondary" className="text-[11px] px-1.5 py-0 shrink-0">
           {model}
         </Badge>
       )}
       {runningProfile && (
-        <span className="text-[10px] font-mono text-muted-foreground">
+        <span className="text-[11px] font-mono text-muted-foreground">
           127.0.0.1:{statuses[runningProfile.id]?.port ?? runningProfile.localPort}
         </span>
       )}

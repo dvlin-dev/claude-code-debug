@@ -131,15 +131,15 @@ export function ProfileSetupPage() {
 
           {/* Flow diagram */}
           <div className="flex items-center justify-center gap-2 mb-6 text-xs text-muted-foreground">
-            <span className="px-2 py-1 border border-border bg-muted/50 font-mono text-[10px]">
+            <span className="px-2 py-1 border border-border bg-muted/50 font-mono text-[11px]">
               {provider.clientName}
             </span>
             <ChevronRight className="h-3 w-3 text-muted-foreground/50" />
-            <span className="px-2 py-1 border border-violet-500/30 bg-violet-500/5 font-mono text-[10px] text-violet-400">
+            <span className="px-2 py-1 border border-violet-500/30 bg-violet-500/5 font-mono text-[11px] text-violet-400">
               Agent Trace
             </span>
             <ChevronRight className="h-3 w-3 text-muted-foreground/50" />
-            <span className="px-2 py-1 border border-border bg-muted/50 font-mono text-[10px]">
+            <span className="px-2 py-1 border border-border bg-muted/50 font-mono text-[11px]">
               Upstream API
             </span>
           </div>
@@ -147,10 +147,10 @@ export function ProfileSetupPage() {
           {/* Section 1: Upstream URL */}
           <div className="mb-5">
             <div className="flex items-center gap-1.5 mb-2">
-              <span className="flex items-center justify-center w-4 h-4 rounded-full bg-violet-500 text-white text-[9px] font-bold">
+              <span className="flex items-center justify-center w-4 h-4 rounded-full bg-violet-500 text-white text-xs font-bold">
                 1
               </span>
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                 Your upstream API URL
               </span>
             </div>
@@ -160,14 +160,14 @@ export function ProfileSetupPage() {
               placeholder={provider.defaultUrl}
               className="font-mono text-xs h-9"
             />
-            <p className="text-[10px] text-muted-foreground mt-1.5">
+            <p className="text-[11px] text-muted-foreground mt-1.5">
               Requests will be forwarded here. Change this if you use a custom
               endpoint or proxy.
             </p>
           </div>
 
           {/* Arrow */}
-          <div className="flex items-center justify-center gap-2 text-[10px] text-muted-foreground mb-5">
+          <div className="flex items-center justify-center gap-2 text-[11px] text-muted-foreground mb-5">
             <span>Agent Trace will listen on</span>
             <span className="text-violet-400">↓</span>
           </div>
@@ -175,10 +175,10 @@ export function ProfileSetupPage() {
           {/* Section 2: Local address */}
           <div className="mb-5">
             <div className="flex items-center gap-1.5 mb-2">
-              <span className="flex items-center justify-center w-4 h-4 rounded-full bg-violet-500 text-white text-[9px] font-bold">
+              <span className="flex items-center justify-center w-4 h-4 rounded-full bg-violet-500 text-white text-xs font-bold">
                 2
               </span>
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                 Your local listener address
               </span>
             </div>
@@ -202,7 +202,7 @@ export function ProfileSetupPage() {
                 Copy
               </Button>
             </div>
-            <p className="text-[10px] text-muted-foreground mt-1.5">
+            <p className="text-[11px] text-muted-foreground mt-1.5">
               Point your agent client to this address instead of the upstream
               URL.
             </p>
@@ -210,14 +210,14 @@ export function ProfileSetupPage() {
 
           {/* Shell block */}
           <div className="relative border border-border bg-black/30 p-3 mb-6">
-            <div className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
+            <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
               Configure your client
             </div>
             <code className="text-xs text-emerald-400 font-mono">
               {exportCmd}
             </code>
             <button
-              className="absolute top-2.5 right-2.5 text-[10px] text-muted-foreground hover:text-foreground px-1.5 py-0.5"
+              className="absolute top-2.5 right-2.5 text-[11px] text-muted-foreground hover:text-foreground px-1.5 py-0.5"
               onClick={() => copyToClipboard(exportCmd, "export")}
             >
               {copied === "export" ? "Copied!" : "Copy"}
@@ -258,7 +258,7 @@ export function ProfileSetupPage() {
 
           <div className="text-center mt-3">
             <button
-              className="text-[10px] text-muted-foreground hover:text-foreground underline underline-offset-2"
+              className="text-[11px] text-muted-foreground hover:text-foreground underline underline-offset-2"
               onClick={() => setStep("manual")}
             >
               Advanced: manual configuration
@@ -320,7 +320,7 @@ export function ProfileSetupPage() {
         {/* Existing profiles */}
         {profiles.length > 0 && (
           <div className="mt-10 text-left max-w-sm mx-auto">
-            <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
               Existing Profiles
             </div>
             {profiles.map((p) => (
@@ -332,7 +332,7 @@ export function ProfileSetupPage() {
                   className={cn(
                     "h-1.5 w-1.5 rounded-full",
                     statuses[p.id]?.isRunning
-                      ? "bg-emerald-500"
+                      ? "bg-success"
                       : "bg-muted-foreground/30",
                   )}
                 />

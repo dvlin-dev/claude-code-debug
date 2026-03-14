@@ -23,9 +23,9 @@ function formatTimeAgo(dateStr: string): string {
 function getProviderBadgeClasses(providerId: string): string {
   switch (providerId) {
     case "anthropic":
-      return "bg-orange-500/10 text-orange-500";
+      return "bg-accent-brand-muted text-accent-brand";
     case "codex":
-      return "bg-emerald-500/10 text-emerald-500";
+      return "bg-success-muted text-success";
     default:
       return "bg-muted text-muted-foreground";
   }
@@ -35,9 +35,10 @@ export function SessionItem({ session, isSelected, onClick }: SessionItemProps) 
   return (
     <button
       className={cn(
-        "w-full text-left px-3 py-2.5 transition-colors duration-150",
-        "hover:bg-accent",
-        isSelected && "bg-accent",
+        "w-full text-left px-4 py-3 transition-colors duration-150",
+        "hover:bg-muted/50",
+        isSelected && "bg-accent-brand-muted border-l-2 border-l-accent-brand",
+        !isSelected && "border-l-2 border-l-transparent",
       )}
       onClick={onClick}
     >
@@ -46,21 +47,21 @@ export function SessionItem({ session, isSelected, onClick }: SessionItemProps) 
         <Badge
           variant="secondary"
           className={cn(
-            "text-[10px] px-1.5 py-0 border-0",
+            "text-[11px] px-1.5 py-0 border-0",
             getProviderBadgeClasses(session.providerId),
           )}
         >
           {session.providerLabel}
         </Badge>
         {session.model && (
-          <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+          <Badge variant="secondary" className="text-[11px] px-1.5 py-0">
             {session.model}
           </Badge>
         )}
-        <Badge variant="secondary" className="text-[10px] px-1.5 py-0 font-mono">
+        <Badge variant="secondary" className="text-[11px] px-1.5 py-0 font-mono">
           {session.exchangeCount}
         </Badge>
-        <span className="text-[10px] text-muted-foreground ml-auto shrink-0">
+        <span className="text-[11px] text-muted-foreground ml-auto shrink-0">
           {formatTimeAgo(session.updatedAt)}
         </span>
       </div>

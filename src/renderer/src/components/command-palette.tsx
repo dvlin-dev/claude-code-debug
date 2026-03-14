@@ -61,8 +61,8 @@ export function CommandPalette() {
   }, [normalizedQuery, profiles]);
 
   function providerBadgeClass(providerId: string) {
-    if (providerId === "anthropic") return "bg-orange-500/10 text-orange-500";
-    if (providerId === "codex") return "bg-emerald-500/10 text-emerald-500";
+    if (providerId === "anthropic") return "bg-accent-brand-muted text-accent-brand";
+    if (providerId === "codex") return "bg-success-muted text-success";
     return "bg-muted text-muted-foreground";
   }
 
@@ -93,7 +93,7 @@ export function CommandPalette() {
                     }}
                   >
                     <span className="flex-1 truncate">{session.title}</span>
-                    <span className={cn("text-[9px] font-semibold px-1.5 py-0.5", providerBadgeClass(session.providerId))}>
+                    <span className={cn("text-[11px] font-semibold px-1.5 py-0.5", providerBadgeClass(session.providerId))}>
                       {session.providerLabel}
                     </span>
                   </CommandItem>
@@ -115,10 +115,10 @@ export function CommandPalette() {
                         setOpen(false);
                       }}
                     >
-                      <span className={cn("inline-block h-1.5 w-1.5 rounded-full shrink-0", isRunning ? "bg-emerald-500" : "bg-muted-foreground/30")} />
+                      <span className={cn("inline-block h-1.5 w-1.5 rounded-full shrink-0", isRunning ? "bg-success" : "bg-muted-foreground/30")} />
                       <span className="flex-1 truncate">{profile.name}</span>
-                      <span className="text-[10px] font-mono text-muted-foreground">:{profile.localPort}</span>
-                      <span className={cn("text-[10px]", isRunning ? "text-emerald-500" : "text-muted-foreground")}>
+                      <span className="text-[11px] font-mono text-muted-foreground">:{profile.localPort}</span>
+                      <span className={cn("text-[11px]", isRunning ? "text-success" : "text-muted-foreground")}>
                         {isRunning ? "Running" : "Start"}
                       </span>
                     </CommandItem>

@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <clipPath id="rounded">
+      <rect width="1024" height="1024" rx="228" ry="228"/>
+    </clipPath>
+  </defs>
+
+  <!-- Background -->
+  <g clip-path="url(#rounded)">
+    <rect width="1024" height="1024" fill="#141414"/>
+
+    <!-- Subtle grid lines for "technical" feel -->
+    <g stroke="#ffffff" stroke-opacity="0.03" stroke-width="1">
+      <line x1="0" y1="256" x2="1024" y2="256"/>
+      <line x1="0" y1="512" x2="1024" y2="512"/>
+      <line x1="0" y1="768" x2="1024" y2="768"/>
+      <line x1="256" y1="0" x2="256" y2="1024"/>
+      <line x1="512" y1="0" x2="512" y2="1024"/>
+      <line x1="768" y1="0" x2="768" y2="1024"/>
+    </g>
+
+    <!-- Main trace waveform — bold angular pulse -->
+    <polyline
+      points="120,580 280,580 340,580 380,300 460,720 540,300 620,720 680,440 740,440 904,440"
+      fill="none"
+      stroke="#E2822B"
+      stroke-width="56"
+      stroke-linecap="square"
+      stroke-linejoin="miter"
+    />
+
+    <!-- Small terminal cursor blink at the end of the trace -->
+    <rect x="904" y="408" width="8" height="64" fill="#E2822B" opacity="0.6"/>
+
+    <!-- Thin baseline reference -->
+    <line x1="120" y1="512" x2="904" y2="512" stroke="#ffffff" stroke-opacity="0.06" stroke-width="2" stroke-dasharray="8,12"/>
+  </g>
+</svg>

@@ -21,8 +21,8 @@ describe("ConversationView", () => {
 
     render(<ConversationView timeline={timeline} rawMode={false} />);
 
-    expect(screen.getByText("USER")).toBeInTheDocument();
-    expect(screen.getByText("ASSISTANT")).toBeInTheDocument();
+    expect(screen.getByText("user")).toBeInTheDocument();
+    expect(screen.getByText("assistant")).toBeInTheDocument();
     expect(screen.getByText("Hello")).toBeInTheDocument();
     expect(screen.getByText("Hi there")).toBeInTheDocument();
   });

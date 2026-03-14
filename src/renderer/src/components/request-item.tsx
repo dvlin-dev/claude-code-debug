@@ -10,9 +10,9 @@ interface RequestItemProps {
 
 function statusColor(code: number | null): string {
   if (!code) return "text-muted-foreground";
-  if (code >= 200 && code < 300) return "text-green-600 dark:text-green-400";
-  if (code >= 400 && code < 500) return "text-orange-600 dark:text-orange-400";
-  if (code >= 500) return "text-red-600 dark:text-red-400";
+  if (code >= 200 && code < 300) return "text-success";
+  if (code >= 400 && code < 500) return "text-warning";
+  if (code >= 500) return "text-destructive";
   return "text-muted-foreground";
 }
 
@@ -37,8 +37,8 @@ export function RequestItem({ request, isSelected, onClick }: RequestItemProps) 
     <button
       className={cn(
         "w-full text-left px-3 py-2 transition-colors duration-150",
-        "hover:bg-accent",
-        isSelected && "bg-accent",
+        "hover:bg-muted/50",
+        isSelected && "bg-accent-brand-muted",
       )}
       onClick={onClick}
     >
@@ -54,7 +54,7 @@ export function RequestItem({ request, isSelected, onClick }: RequestItemProps) 
           {formatDuration(request.durationMs)}
         </span>
         {request.model && (
-          <Badge variant="secondary" className="text-[10px] px-1 py-0">
+          <Badge variant="secondary" className="text-[11px] px-1 py-0">
             {request.model}
           </Badge>
         )}

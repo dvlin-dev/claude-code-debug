@@ -132,7 +132,7 @@ export function ConversationView({ timeline, rawMode }: ConversationViewProps) {
 
   return (
     <ScrollArea className="h-full">
-      <div className="space-y-4 p-4 max-w-3xl mx-auto">
+      <div className="space-y-5 p-6 max-w-4xl mx-auto">
         {instructions.length > 0 && (
           <ContextChip
             contextType="system-reminder"

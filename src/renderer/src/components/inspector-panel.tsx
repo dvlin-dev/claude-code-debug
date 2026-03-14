@@ -59,7 +59,7 @@ export function InspectorPanel({
 
   return (
     <div className="flex h-full flex-col border-l">
-      <div className="flex items-center justify-between border-b px-3 py-2 shrink-0">
+      <div className="flex items-center justify-between border-b px-4 py-3 shrink-0">
         <span className="text-xs font-medium">Inspector</span>
         <Button
           variant="ghost"
@@ -71,12 +71,12 @@ export function InspectorPanel({
         </Button>
       </div>
 
-      <div className="flex gap-1 border-b px-2 py-1.5 shrink-0 overflow-x-auto">
+      <div className="flex gap-1 border-b px-3 py-2 shrink-0 overflow-x-auto">
         {sectionTabs.map(({ id, label }) => (
           <button
             key={id}
             className={cn(
-              "px-2 py-1 text-[11px] whitespace-nowrap transition-colors",
+              "px-2 py-1 text-xs whitespace-nowrap transition-colors",
               activeTab === id
                 ? "bg-accent text-accent-foreground font-medium"
                 : "text-muted-foreground hover:text-foreground hover:bg-accent/50",
@@ -88,7 +88,7 @@ export function InspectorPanel({
         ))}
         <button
           className={cn(
-            "px-2 py-1 text-[11px] whitespace-nowrap transition-colors",
+            "px-2 py-1 text-xs whitespace-nowrap transition-colors",
             activeTab === "requests"
               ? "bg-accent text-accent-foreground font-medium"
               : "text-muted-foreground hover:text-foreground hover:bg-accent/50",
@@ -145,15 +145,15 @@ function RequestListSection({
 }
 
 function statusBadgeColor(value: string): string {
-  if (value.startsWith("2")) return "text-emerald-500 bg-emerald-500/10";
-  if (value.startsWith("4")) return "text-orange-500 bg-orange-500/10";
-  if (value.startsWith("5")) return "text-red-500 bg-red-500/10";
+  if (value.startsWith("2")) return "text-success bg-success-muted";
+  if (value.startsWith("4")) return "text-warning bg-warning-muted";
+  if (value.startsWith("5")) return "text-destructive bg-destructive/10";
   return "text-muted-foreground bg-muted";
 }
 
 function providerBadgeColor(value: string): string {
-  if (value === "Anthropic") return "bg-orange-500/10 text-orange-500";
-  if (value === "Codex") return "bg-emerald-500/10 text-emerald-500";
+  if (value === "Anthropic") return "bg-accent-brand-muted text-accent-brand";
+  if (value === "Codex") return "bg-success-muted text-success";
   return "text-muted-foreground bg-muted";
 }
 
@@ -207,7 +207,7 @@ function OverviewSection({
                 <div className="text-base font-bold font-mono tabular-nums">
                   {item.value}
                 </div>
-                <div className="text-[10px] text-muted-foreground mt-0.5">
+                <div className="text-xs text-muted-foreground mt-0.5">
                   {item.label}
                 </div>
               </div>
@@ -248,7 +248,7 @@ function InspectorSectionView({
     return (
       <ScrollArea className="h-full">
         <div className="space-y-2 p-3">
-          <Badge variant="secondary" className="text-[10px]">
+          <Badge variant="secondary" className="text-xs">
             {section.tools.length} tools
           </Badge>
           {section.tools.map((tool) => (
@@ -259,7 +259,7 @@ function InspectorSectionView({
                   {tool.description}
                 </p>
               ) : null}
-              <pre className="mt-2 text-[11px] overflow-auto">
+              <pre className="mt-2 text-xs overflow-auto">
                 {JSON.stringify(tool.inputSchema, null, 2)}
               </pre>
             </div>
@@ -272,7 +272,7 @@ function InspectorSectionView({
   if (section.kind === "json") {
     return (
       <ScrollArea className="h-full">
-        <pre className="p-3 text-[11px] font-mono whitespace-pre-wrap break-all">
+        <pre className="p-3 text-xs font-mono whitespace-pre-wrap break-all">
           {JSON.stringify(section.json, null, 2)}
         </pre>
       </ScrollArea>
@@ -300,7 +300,7 @@ function RawSection({ content }: { content: string | null }) {
 
   return (
     <ScrollArea className="h-full">
-      <pre className="p-3 text-[11px] font-mono whitespace-pre-wrap break-all">
+      <pre className="p-3 text-xs font-mono whitespace-pre-wrap break-all">
         {displayContent}
       </pre>
     </ScrollArea>

@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Badge } from "./ui/badge";
 import { ContentBlock } from "./content-block";
 import { cn } from "../lib/utils";
 import { Copy, Check } from "lucide-react";
@@ -64,35 +63,27 @@ function CopyButton({ text }: { text: string }) {
   );
 }
 
+function roleDotColor(role: string): string {
+  switch (role) {
+    case "user": return "bg-accent-brand";
+    case "system": return "bg-muted-foreground/50";
+    default: return "bg-foreground/30";
+  }
+}
+
 export function MessageBlock({ message, rawMode }: MessageBlockProps) {
-  const isUser = message.role === "user";
-  const isSystem = message.role === "system";
   const copyText = rawMode
     ? JSON.stringify(message.blocks, null, 2)
     : extractText(message.blocks);
 
-  const containerStyle = isUser
-    ? "bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800"
-    : isSystem
-      ? "bg-cyan-50 dark:bg-cyan-950/30 border border-cyan-200 dark:border-cyan-800"
-      : "bg-muted/50 border border-border";
-
-  const badgeVariant = isUser ? "default" as const : "secondary" as const;
-  const badgeClass = isUser ? "bg-blue-600" : isSystem ? "bg-cyan-600" : "";
-
   if (rawMode) {
     return (
-      <div className={cn(
-        "p-3 space-y-2 relative group",
-        containerStyle,
-      )}>
+      <div className="p-4 space-y-2 relative group bg-card border border-border">
         <div className="flex items-center justify-between">
-          <Badge
-            variant={badgeVariant}
-            className={cn("text-[10px]", badgeClass)}
-          >
-            {message.role.toUpperCase()}
-          </Badge>
+          <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <span className={cn("inline-block h-1.5 w-1.5 rounded-full", roleDotColor(message.role))} />
+            {message.role}
+          </span>
           <div className="opacity-0 group-hover:opacity-100 transition-opacity">
             <CopyButton text={copyText} />
           </div>
@@ -107,17 +98,12 @@ export function MessageBlock({ message, rawMode }: MessageBlockProps) {
   const contentBlocks = normalizeContent(message);
 
   return (
-    <div className={cn(
-      "p-3 space-y-2 relative group",
-      containerStyle,
-    )}>
+    <div className="p-4 space-y-2 relative group bg-card border border-border">
       <div className="flex items-center justify-between">
-        <Badge
-          variant={badgeVariant}
-          className={cn("text-[10px]", badgeClass)}
-        >
-          {message.role.toUpperCase()}
-        </Badge>
+        <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <span className={cn("inline-block h-1.5 w-1.5 rounded-full", roleDotColor(message.role))} />
+          {message.role}
+        </span>
         <div className="opacity-0 group-hover:opacity-100 transition-opacity">
           <CopyButton text={copyText} />
         </div>

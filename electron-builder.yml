@@ -1,4 +1,4 @@
-appId: com.claude-code-debug.app
+appId: com.dvlin.agent-trace
 productName: Agent Trace
 directories:
   output: dist
@@ -19,6 +19,21 @@ mac:
   target:
     - dmg
     - zip
+dmg:
+  background: resources/dmg-background.png
+  backgroundColor: "#141414"
+  iconSize: 80
+  window:
+    width: 660
+    height: 400
+  contents:
+    - x: 190
+      y: 210
+      type: file
+    - x: 470
+      y: 210
+      type: link
+      path: /Applications
 win:
   target:
     - nsis

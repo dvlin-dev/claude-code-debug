@@ -44,20 +44,17 @@ export function ContentBlock({ block }: ContentBlockProps) {
   if (block.type === "reasoning") {
     return (
       <div
-        className={cn(
-          "bg-fuchsia-50 dark:bg-fuchsia-950/30 border border-fuchsia-200 dark:border-fuchsia-800",
-          "cursor-pointer",
-        )}
+        className="border-l-2 border-fuchsia-400/60 cursor-pointer"
         onClick={() => setExpanded(!expanded)}
       >
-        <div className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-fuchsia-700 dark:text-fuchsia-300">
+        <div className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-muted-foreground">
           <ChevronRight
             className={cn("h-3 w-3 transition-transform", expanded && "rotate-90")}
           />
-          💭 Thinking
+          Thinking
         </div>
         {expanded && (
-          <div className="px-3 pb-2 text-sm whitespace-pre-wrap text-fuchsia-900 dark:text-fuchsia-200">
+          <div className="px-3 pb-2 text-sm whitespace-pre-wrap">
             {block.text}
           </div>
         )}
@@ -68,10 +65,10 @@ export function ContentBlock({ block }: ContentBlockProps) {
   if (block.type === "tool-call") {
     return (
       <div
-        className="border-l-2 border-blue-500 bg-blue-50 dark:bg-blue-950/20 cursor-pointer"
+        className="border-l-2 border-muted-foreground/30 cursor-pointer"
         onClick={() => setExpanded(!expanded)}
       >
-        <div className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-blue-700 dark:text-blue-300">
+        <div className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-muted-foreground">
           <ChevronRight
             className={cn("h-3 w-3 transition-transform", expanded && "rotate-90")}
           />
@@ -98,18 +95,11 @@ export function ContentBlock({ block }: ContentBlockProps) {
       <div
         className={cn(
           "border-l-2 cursor-pointer",
-          hasError
-            ? "border-red-500 bg-red-50 dark:bg-red-950/20"
-            : "border-green-500 bg-green-50 dark:bg-green-950/20",
+          hasError ? "border-destructive" : "border-success",
         )}
         onClick={() => setExpanded(!expanded)}
       >
-        <div className={cn(
-          "flex items-center gap-1 px-3 py-1.5 text-xs font-medium",
-          hasError
-            ? "text-red-700 dark:text-red-300"
-            : "text-green-700 dark:text-green-300",
-        )}>
+        <div className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-muted-foreground">
           <ChevronRight
             className={cn("h-3 w-3 transition-transform", expanded && "rotate-90")}
           />

@@ -89,7 +89,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
           <div className="space-y-5">
             {/* Profiles Section */}
             <div>
-              <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+              <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
                 Profiles
               </div>
               <div className="space-y-1">
@@ -103,16 +103,16 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                       <div
                         className={cn(
                           "h-1.5 w-1.5 rounded-full flex-shrink-0",
-                          isRunning ? "bg-emerald-500" : "bg-muted-foreground/30",
+                          isRunning ? "bg-success" : "bg-muted-foreground/30",
                         )}
                       />
                       <div className="flex-1 min-w-0">
                         <div className="text-xs font-medium">{profile.name}</div>
-                        <div className="text-[10px] text-muted-foreground font-mono truncate">
+                        <div className="text-[11px] text-muted-foreground font-mono truncate">
                           {profile.upstreamBaseUrl}
                         </div>
                       </div>
-                      <span className="text-[10px] font-mono text-muted-foreground flex-shrink-0">
+                      <span className="text-[11px] font-mono text-muted-foreground flex-shrink-0">
                         :{profile.localPort}
                       </span>
                       <Button
@@ -152,7 +152,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
 
             {/* Updates Section */}
             <div>
-              <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+              <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
                 Updates
               </div>
               <div className="flex items-center gap-3 border border-border p-2.5">
@@ -161,7 +161,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                     Version {updateState.currentVersion || "unknown"}
                   </div>
                   {statusMessage && (
-                    <div className="text-[10px] text-muted-foreground">{statusMessage}</div>
+                    <div className="text-[11px] text-muted-foreground">{statusMessage}</div>
                   )}
                 </div>
                 {updateButton}

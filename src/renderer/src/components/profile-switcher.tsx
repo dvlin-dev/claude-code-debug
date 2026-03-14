@@ -19,9 +19,9 @@ import type { ConnectionProfile, ProviderId } from "../../../shared/contracts";
 function providerTag(providerId: ProviderId): { label: string; className: string } {
   switch (providerId) {
     case "anthropic":
-      return { label: "AN", className: "bg-orange-500/10 text-orange-500" };
+      return { label: "AN", className: "bg-accent-brand-muted text-accent-brand" };
     case "codex":
-      return { label: "CX", className: "bg-emerald-500/10 text-emerald-500" };
+      return { label: "CX", className: "bg-success-muted text-success" };
   }
 }
 
@@ -38,7 +38,7 @@ export function ProfileSwitcher() {
 
   if (profiles.length === 0) {
     return (
-      <div className="px-2 py-3 text-center text-[10px] text-muted-foreground">
+      <div className="px-2 py-3 text-center text-[11px] text-muted-foreground">
         No profiles configured
       </div>
     );
@@ -145,20 +145,20 @@ function ProfileRow({ profile, port, isRunning, onToggle, onEdit, onDelete }: Pr
 
   return (
     <div
-      className="group flex items-center gap-1.5 px-1.5 py-1 hover:bg-muted/50 transition-colors"
+      className="group flex items-center gap-2 px-3 py-2 hover:bg-muted/50 transition-colors"
       onMouseEnter={() => setRowHovered(true)}
       onMouseLeave={() => setRowHovered(false)}
     >
       <span
         className={cn(
           "inline-block h-1.5 w-1.5 rounded-full shrink-0",
-          isRunning ? "bg-emerald-500 shadow-[0_0_4px_rgba(52,211,153,0.4)]" : "bg-muted-foreground/30",
+          isRunning ? "bg-success shadow-[0_0_4px_rgba(52,211,153,0.4)]" : "bg-muted-foreground/30",
         )}
       />
-      <span className={cn("text-[8px] font-bold shrink-0 px-1", tag.className)}>
+      <span className={cn("text-[11px] font-bold shrink-0 px-1", tag.className)}>
         {tag.label}
       </span>
-      <span className="text-[10px] font-medium truncate flex-1">{profile.name}</span>
+      <span className="text-xs font-medium truncate flex-1">{profile.name}</span>
 
       {/* Edit / Delete — visible on row hover */}
       <span
@@ -183,16 +183,16 @@ function ProfileRow({ profile, port, isRunning, onToggle, onEdit, onDelete }: Pr
         </button>
       </span>
 
-      <span className="text-[9px] font-mono text-muted-foreground shrink-0">:{port}</span>
+      <span className="text-xs font-mono text-muted-foreground shrink-0">:{port}</span>
       <button
         className={cn(
-          "text-[9px] px-1.5 py-0.5 border shrink-0 min-w-[50px] text-center transition-all",
+          "text-xs px-1.5 py-0.5 border shrink-0 min-w-[50px] text-center transition-all",
           isRunning
             ? hovered
-              ? "text-red-400 border-red-400/30 bg-red-400/10"
-              : "text-emerald-500 border-emerald-500/25 bg-emerald-500/10"
+              ? "text-destructive border-destructive/30 bg-destructive/10"
+              : "text-success border-success/25 bg-success-muted"
             : hovered
-              ? "text-emerald-500 border-emerald-500/25 bg-emerald-500/10"
+              ? "text-success border-success/25 bg-success-muted"
               : "text-muted-foreground border-border",
         )}
         onMouseEnter={() => setHovered(true)}
