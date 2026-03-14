@@ -5,6 +5,7 @@ import type {
   SessionMatchResult,
   SessionMatcher,
 } from "../../../../shared/contracts";
+import { deriveTitleFromExchange } from "../shared/derive-title";
 
 interface OpenAiResponsesMatcherState {
   sessionHint: string | null;
@@ -106,19 +107,6 @@ export const openaiResponsesSessionMatcher: SessionMatcher = {
   },
 
   deriveTitle(normalized) {
-    const messages = [...normalized.request.inputMessages].reverse();
-    for (const message of messages) {
-      if (message.role !== "user") continue;
-      const text = message.blocks
-        .filter((block) => block.type === "text")
-        .map((block) => block.text)
-        .join(" ")
-        .trim();
-      if (text) {
-        return text.slice(0, 50);
-      }
-    }
-
-    return normalized.model ?? "Codex Session";
+    return deriveTitleFromExchange(normalized, "Codex Session");
   },
 };

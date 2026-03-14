@@ -7,6 +7,7 @@ import type {
   SessionMatcher,
 } from "../../../../shared/contracts";
 import { getCapturedBodyText } from "../../../capture/body-codec";
+import { deriveTitleFromExchange } from "../shared/derive-title";
 
 interface AnthropicMatcherState {
   systemHash: string | null;
@@ -131,18 +132,6 @@ export const anthropicSessionMatcher: SessionMatcher = {
   },
 
   deriveTitle(normalized) {
-    for (const message of normalized.request.inputMessages) {
-      if (message.role !== "user") continue;
-      const text = message.blocks
-        .filter((block) => block.type === "text")
-        .map((block) => block.text)
-        .join(" ")
-        .trim();
-      if (text) {
-        return text.slice(0, 50);
-      }
-    }
-
-    return normalized.model ?? "Anthropic Session";
+    return deriveTitleFromExchange(normalized, "Anthropic Session");
   },
 };
