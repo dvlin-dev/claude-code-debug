@@ -10,6 +10,7 @@
     "pack": "pnpm build && node ./scripts/run-electron-builder.cjs --dir",
     "dist": "pnpm build && node ./scripts/run-electron-builder.cjs",
     "dist:mac": "pnpm build && node ./scripts/run-electron-builder.cjs --mac",
+    "dist:win": "pnpm build && node ./scripts/run-electron-builder.cjs --win",
     "release:mac": "bash ./scripts/release.sh",
     "preview": "electron-vite preview",
     "typecheck": "tsc --noEmit && tsc -p tsconfig.node.json --noEmit",

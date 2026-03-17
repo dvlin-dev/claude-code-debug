@@ -34,8 +34,14 @@ dmg:
       type: link
       path: /Applications
 win:
+  icon: resources/icon.ico
+  artifactName: Agent-Trace-${version}-${arch}.${ext}
   target:
     - nsis
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  deleteAppDataOnUninstall: true
 linux:
   target:
     - AppImage

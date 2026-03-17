@@ -1,0 +1,45 @@
+name: Release Windows
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+env:
+  NODE_VERSION: 20
+  PNPM_VERSION: 10.32.1
+
+jobs:
+  release:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: Verify tag matches package version
+        shell: bash
+        run: |
+          VERSION="$(node -p "JSON.parse(require('node:fs').readFileSync('package.json', 'utf8')).version")"
+          if [[ "v${VERSION}" != "${GITHUB_REF_NAME}" ]]; then
+            echo "Tag ${GITHUB_REF_NAME} does not match package.json version ${VERSION}" >&2
+            exit 1
+          fi
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Build app
+        run: pnpm build
+      - name: Build Windows release artifacts
+        run: pnpm exec node ./scripts/run-electron-builder.cjs --win nsis --x64 --publish never
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*.exe
+            dist/*.exe.blockmap
+            dist/latest.yml
