@@ -7,6 +7,7 @@ import { useSessionStore } from "../../src/renderer/src/stores/session-store";
 import { useTraceStore } from "../../src/renderer/src/stores/trace-store";
 import type {
   ProfileStatusChangedEvent,
+  ProfilesChangedEvent,
   SessionListItemVM,
   SessionTraceVM,
   TraceResetEvent,
@@ -29,6 +30,7 @@ const mockOnProxyError = vi.fn(() => () => {});
 
 let traceCapturedHandler: ((payload: TraceCapturedEvent) => void) | null = null;
 let profileStatusHandler: ((payload: ProfileStatusChangedEvent) => void) | null = null;
+let profilesChangedHandler: ((payload: ProfilesChangedEvent) => void) | null = null;
 let traceResetHandler: ((payload: TraceResetEvent) => void) | null = null;
 
 const mockOnTraceCaptured = vi.fn((cb: (payload: TraceCapturedEvent) => void) => {
@@ -43,6 +45,15 @@ const mockOnProfileStatusChanged = vi.fn(
     profileStatusHandler = cb;
     return () => {
       profileStatusHandler = null;
+    };
+  },
+);
+
+const mockOnProfilesChanged = vi.fn(
+  (cb: (payload: ProfilesChangedEvent) => void) => {
+    profilesChangedHandler = cb;
+    return () => {
+      profilesChangedHandler = null;
     };
   },
 );
@@ -70,6 +81,7 @@ vi.mock("../../src/renderer/src/lib/electron-api", () => ({
     onTraceCaptured: mockOnTraceCaptured,
     onTraceReset: mockOnTraceReset,
     onProfileStatusChanged: mockOnProfileStatusChanged,
+    onProfilesChanged: mockOnProfilesChanged,
     onProxyError: mockOnProxyError,
   }),
 }));
@@ -139,9 +151,11 @@ describe("Session Store", () => {
     mockClearHistory.mockReset().mockResolvedValue(undefined);
     mockOnTraceCaptured.mockClear();
     mockOnProfileStatusChanged.mockClear();
+    mockOnProfilesChanged.mockClear();
     mockOnTraceReset.mockClear();
     traceCapturedHandler = null;
     profileStatusHandler = null;
+    profilesChangedHandler = null;
     traceResetHandler = null;
   });
 

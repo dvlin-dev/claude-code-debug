@@ -24,6 +24,7 @@ export function getElectronAPI(): ElectronAPI {
     "onTraceCaptured",
     "onTraceReset",
     "onProfileStatusChanged",
+    "onProfilesChanged",
     "onUpdateStateChanged",
   ];
 
