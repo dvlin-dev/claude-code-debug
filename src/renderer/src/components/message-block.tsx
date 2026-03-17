@@ -143,7 +143,7 @@ export function MessageBlock({ message, rawMode }: MessageBlockProps) {
       <div
         className={cn(
           "flex items-center justify-between",
-          expanded && "sticky top-0 z-10 bg-card cursor-pointer -mx-4 -mt-4 px-4 pt-4 pb-2 border-b border-border/50 transition-colors hover:brightness-95 dark:hover:brightness-110"
+          expanded && "sticky top-0 z-10 bg-card cursor-pointer -mx-4 -mt-4 px-4 pt-4 pb-2 border-b border-border/50 transition-colors hover:brightness-95 dark:hover:brightness-110 rounded-t-lg"
         )}
         onClick={expanded ? () => setExpanded(false) : undefined}
       >
