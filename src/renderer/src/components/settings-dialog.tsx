@@ -81,9 +81,11 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>{showAddForm ? "Add Profile" : "Settings"}</DialogTitle>
-        </DialogHeader>
+        {!showAddForm && (
+          <DialogHeader>
+            <DialogTitle>Settings</DialogTitle>
+          </DialogHeader>
+        )}
 
         {showAddForm ? (
           <ProfileForm

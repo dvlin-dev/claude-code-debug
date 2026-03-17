@@ -6,6 +6,13 @@ import { useProfileStore } from "../../stores/profile-store";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../../components/ui/select";
 
 const PROVIDER_OPTIONS: Array<{
   id: ProviderId;
@@ -100,7 +107,7 @@ export function ProfileForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 border p-5 text-left">
+    <form onSubmit={handleSubmit} className="space-y-4 p-5 text-left">
       <div className="space-y-1">
         <h2 className="text-lg font-semibold">Connect provider</h2>
         <p className="text-sm text-muted-foreground">
@@ -120,18 +127,21 @@ export function ProfileForm({
 
       <div className="space-y-2">
         <Label htmlFor="profile-provider">Provider</Label>
-        <select
-          id="profile-provider"
-          className="flex h-9 w-full border bg-transparent px-3 py-1 text-sm shadow-xs"
+        <Select
           value={providerId}
-          onChange={(event) => setProviderId(event.target.value as ProviderId)}
+          onValueChange={(value) => setProviderId(value as ProviderId)}
         >
-          {PROVIDER_OPTIONS.map((option) => (
-            <option key={option.id} value={option.id}>
-              {option.label}
-            </option>
-          ))}
-        </select>
+          <SelectTrigger id="profile-provider">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {PROVIDER_OPTIONS.map((option) => (
+              <SelectItem key={option.id} value={option.id}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="space-y-2">
@@ -148,7 +158,7 @@ export function ProfileForm({
       <div className="space-y-2">
         <Label>Local address</Label>
         <div className="flex gap-2">
-          <div className="flex flex-1 items-center border bg-transparent shadow-xs">
+          <div className="flex flex-1 items-center rounded-md border bg-transparent shadow-xs">
             <span className="pl-3 text-sm text-muted-foreground select-none">http://127.0.0.1:</span>
             <input
               type="number"

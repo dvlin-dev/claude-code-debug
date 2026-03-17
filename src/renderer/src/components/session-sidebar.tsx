@@ -1,11 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
-import { Search, Plus } from "lucide-react";
+import { useEffect, useMemo } from "react";
+import { Search } from "lucide-react";
 import { Input } from "./ui/input";
 import { ScrollArea } from "./ui/scroll-area";
 import { SessionItem } from "./session-item";
 import { EmptyState } from "./empty-state";
-import { ProfileSwitcher } from "./profile-switcher";
-import { SettingsDialog } from "./settings-dialog";
 import { useSessionStore } from "../stores/session-store";
 import { cn } from "../lib/utils";
 
@@ -32,7 +30,6 @@ function getDateGroup(dateStr: string): string {
 const DATE_GROUP_ORDER = ["Today", "Yesterday", "This Week", "Earlier"];
 
 export function SessionSidebar() {
-  const [settingsOpen, setSettingsOpen] = useState(false);
   const {
     sessions,
     selectedSessionId,
@@ -81,27 +78,9 @@ export function SessionSidebar() {
   }, [filtered]);
 
   return (
-    <div className="flex h-full flex-col border-r border-border overflow-hidden">
-      {/* Profiles Section */}
-      <div className="p-3 border-b border-border shrink-0">
-        <div className="flex items-center justify-between px-1 mb-2">
-          <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70">
-            Profiles
-          </span>
-          <button
-            className="p-0.5 text-muted-foreground hover:text-foreground transition-colors"
-            onClick={() => setSettingsOpen(true)}
-            title="Add profile"
-          >
-            <Plus className="h-3.5 w-3.5" />
-          </button>
-        </div>
-        <ProfileSwitcher />
-        <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
-      </div>
-
+    <div className="flex h-full flex-col border-r border-border overflow-hidden select-none">
       {/* Search & Filter */}
-      <div className="p-3 space-y-2 border-b border-border shrink-0">
+      <div className="p-3 space-y-3 border-b border-border shrink-0">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
           <Input

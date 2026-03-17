@@ -47,6 +47,7 @@ function createWindow(): void {
 }
 
 app.whenReady().then(async () => {
+  app.setName("Agent Trace");
   const userDataPath = app.getPath("userData");
   const updateService = createUpdateService({
     currentVersion: app.getVersion(),
