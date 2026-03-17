@@ -12,31 +12,10 @@ export function ContentBlock({ block }: ContentBlockProps) {
 
   if (block.type === "text") {
     const text = block.text ?? "";
-    const isLong = text.length > 200;
 
     return (
       <div className="text-sm whitespace-pre-wrap">
-        {isLong && !expanded ? (
-          <>
-            {text.slice(0, 200)}...
-            <button
-              className="ml-1 text-xs text-primary hover:underline"
-              onClick={() => setExpanded(true)}
-            >
-              Show more
-            </button>
-          </>
-        ) : (
-          text
-        )}
-        {isLong && expanded && (
-          <button
-            className="ml-1 text-xs text-primary hover:underline"
-            onClick={() => setExpanded(false)}
-          >
-            Show less
-          </button>
-        )}
+        {text}
       </div>
     );
   }
@@ -45,7 +24,10 @@ export function ContentBlock({ block }: ContentBlockProps) {
     return (
       <div
         className="border-l-2 border-fuchsia-400/60 cursor-pointer"
-        onClick={() => setExpanded(!expanded)}
+        onClick={(e) => {
+          e.stopPropagation();
+          setExpanded(!expanded);
+        }}
       >
         <div className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-muted-foreground">
           <ChevronRight
@@ -66,7 +48,10 @@ export function ContentBlock({ block }: ContentBlockProps) {
     return (
       <div
         className="border-l-2 border-muted-foreground/30 cursor-pointer"
-        onClick={() => setExpanded(!expanded)}
+        onClick={(e) => {
+          e.stopPropagation();
+          setExpanded(!expanded);
+        }}
       >
         <div className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-muted-foreground">
           <ChevronRight
@@ -97,7 +82,10 @@ export function ContentBlock({ block }: ContentBlockProps) {
           "border-l-2 cursor-pointer",
           hasError ? "border-destructive" : "border-success",
         )}
-        onClick={() => setExpanded(!expanded)}
+        onClick={(e) => {
+          e.stopPropagation();
+          setExpanded(!expanded);
+        }}
       >
         <div className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-muted-foreground">
           <ChevronRight
@@ -112,7 +100,7 @@ export function ContentBlock({ block }: ContentBlockProps) {
         )}
         {!expanded && isLong && (
           <div className="px-3 pb-1.5 text-xs text-muted-foreground truncate">
-            {content.slice(0, 100)}...
+            {content.slice(0, 80)}...
           </div>
         )}
       </div>

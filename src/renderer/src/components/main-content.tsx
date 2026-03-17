@@ -6,7 +6,11 @@ import {
   ResizableHandle,
 } from "./ui/resizable";
 import { ConversationHeader } from "./conversation-header";
+import { ContentTabBar } from "./content-tab-bar";
 import { ConversationView } from "./conversation-view";
+import { SystemView } from "./system-view";
+import { ToolsView } from "./tools-view";
+import { OtherView } from "./other-view";
 import { InspectorPanel } from "./inspector-panel";
 import { useSessionStore } from "../stores/session-store";
 import { useTraceStore } from "../stores/trace-store";
@@ -108,6 +112,7 @@ export function MainContent() {
   const sessions = useSessionStore((s) => s.sessions);
   const loadTrace = useTraceStore((state) => state.loadTrace);
   const inspectorOpen = useTraceStore((state) => state.inspectorOpen);
+  const contentTab = useTraceStore((state) => state.contentTab);
 
   useEffect(() => {
     if (selectedSessionId) {
@@ -129,16 +134,26 @@ export function MainContent() {
     );
   }
 
+  const contentArea = (
+    <>
+      {contentTab === "messages" && <ConversationView />}
+      {contentTab === "system" && <SystemView />}
+      {contentTab === "tools" && <ToolsView />}
+      {contentTab === "other" && <OtherView />}
+    </>
+  );
+
   if (inspectorOpen) {
     return (
       <div className="flex h-full flex-col">
         <ConversationHeader />
+        <ContentTabBar />
         <ResizablePanelGroup orientation="horizontal" className="flex-1">
-          <ResizablePanel defaultSize="65%" minSize="30%">
-            <ConversationView />
+          <ResizablePanel defaultSize="50%" minSize="25%">
+            {contentArea}
           </ResizablePanel>
           <ResizableHandle />
-          <ResizablePanel defaultSize="35%" minSize="20%">
+          <ResizablePanel defaultSize="50%" minSize="25%">
             <InspectorPanel />
           </ResizablePanel>
         </ResizablePanelGroup>
@@ -149,8 +164,9 @@ export function MainContent() {
   return (
     <div className="flex h-full flex-col">
       <ConversationHeader />
+      <ContentTabBar />
       <div className="flex-1 overflow-hidden">
-        <ConversationView />
+        {contentArea}
       </div>
     </div>
   );

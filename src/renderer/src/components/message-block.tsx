@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ContentBlock } from "./content-block";
 import { cn } from "../lib/utils";
-import { Copy, Check } from "lucide-react";
+import { Copy, Check, ChevronRight } from "lucide-react";
 import type {
   NormalizedMessage,
   NormalizedMessageBlock,
@@ -66,12 +66,41 @@ function CopyButton({ text }: { text: string }) {
 function roleDotColor(role: string): string {
   switch (role) {
     case "user": return "bg-accent-brand";
+    case "assistant": return "bg-emerald-500";
     case "system": return "bg-muted-foreground/50";
+    case "tool": return "bg-amber-500";
     default: return "bg-foreground/30";
   }
 }
 
+function roleTextColor(role: string): string {
+  switch (role) {
+    case "user": return "text-accent-brand font-medium";
+    case "assistant": return "text-emerald-600 dark:text-emerald-400 font-medium";
+    case "system": return "text-foreground/80 font-medium";
+    case "tool": return "text-amber-600 dark:text-amber-400 font-medium";
+    default: return "text-muted-foreground";
+  }
+}
+
+function blockTypeBadges(blocks: NormalizedMessageBlock[]): string[] {
+  const types = new Set<string>();
+  for (const block of blocks) {
+    types.add(block.type);
+  }
+  return Array.from(types);
+}
+
+const BLOCK_TYPE_COLORS: Record<string, string> = {
+  text: "bg-muted text-muted-foreground",
+  reasoning: "bg-fuchsia-400/10 text-fuchsia-400",
+  "tool-call": "bg-blue-400/10 text-blue-400",
+  "tool-result": "bg-green-400/10 text-green-400",
+  unknown: "bg-muted text-muted-foreground",
+};
+
 export function MessageBlock({ message, rawMode }: MessageBlockProps) {
+  const [expanded, setExpanded] = useState(false);
   const copyText = rawMode
     ? JSON.stringify(message.blocks, null, 2)
     : extractText(message.blocks);
@@ -80,9 +109,14 @@ export function MessageBlock({ message, rawMode }: MessageBlockProps) {
     return (
       <div className="p-4 space-y-2 relative group bg-card border border-border">
         <div className="flex items-center justify-between">
-          <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <span className="flex items-center gap-1.5 text-xs">
             <span className={cn("inline-block h-1.5 w-1.5 rounded-full", roleDotColor(message.role))} />
-            {message.role}
+            <span className={roleTextColor(message.role)}>{message.role.toUpperCase()}</span>
+            {blockTypeBadges(message.blocks).map((t) => (
+              <span key={t} className={cn("text-[10px] px-1.5 py-0 rounded-sm", BLOCK_TYPE_COLORS[t] ?? BLOCK_TYPE_COLORS.unknown)}>
+                {t}
+              </span>
+            ))}
           </span>
           <div className="opacity-0 group-hover:opacity-100 transition-opacity">
             <CopyButton text={copyText} />
@@ -96,23 +130,53 @@ export function MessageBlock({ message, rawMode }: MessageBlockProps) {
   }
 
   const contentBlocks = normalizeContent(message);
+  const previewText = extractText(contentBlocks);
 
   return (
-    <div className="p-4 space-y-2 relative group bg-card border border-border">
-      <div className="flex items-center justify-between">
-        <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+    <div
+      className={cn(
+        "p-4 space-y-2 relative group bg-card border border-border transition-colors",
+        !expanded && "cursor-pointer hover:bg-accent/30"
+      )}
+      onClick={!expanded ? () => setExpanded(true) : undefined}
+    >
+      <div
+        className={cn(
+          "flex items-center justify-between",
+          expanded && "sticky top-0 z-10 bg-card cursor-pointer -mx-4 -mt-4 px-4 pt-4 pb-2 border-b border-border/50 transition-colors hover:brightness-95 dark:hover:brightness-110"
+        )}
+        onClick={expanded ? () => setExpanded(false) : undefined}
+      >
+        <span className="flex items-center gap-1.5 text-xs">
+          <ChevronRight
+            className={cn(
+              "h-3.5 w-3.5 text-muted-foreground shrink-0 transition-transform",
+              expanded && "rotate-90"
+            )}
+          />
           <span className={cn("inline-block h-1.5 w-1.5 rounded-full", roleDotColor(message.role))} />
-          {message.role}
+          <span className={roleTextColor(message.role)}>{message.role.toUpperCase()}</span>
+          {blockTypeBadges(message.blocks).map((t) => (
+            <span key={t} className={cn("text-[10px] px-1.5 py-0 rounded-sm", BLOCK_TYPE_COLORS[t] ?? BLOCK_TYPE_COLORS.unknown)}>
+              {t}
+            </span>
+          ))}
         </span>
-        <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
           <CopyButton text={copyText} />
         </div>
       </div>
-      <div className="space-y-2 pl-1">
-        {contentBlocks.map((block, i) => (
-          <ContentBlock key={`${block.type}-${i}`} block={block} />
-        ))}
-      </div>
+      {expanded ? (
+        <div className="space-y-2 pl-1">
+          {contentBlocks.map((block, i) => (
+            <ContentBlock key={`${block.type}-${i}`} block={block} />
+          ))}
+        </div>
+      ) : (
+        <div className="text-sm text-muted-foreground pl-1 whitespace-pre-wrap line-clamp-3">
+          {previewText}
+        </div>
+      )}
     </div>
   );
 }

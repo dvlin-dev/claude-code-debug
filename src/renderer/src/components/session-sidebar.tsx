@@ -131,7 +131,7 @@ export function SessionSidebar() {
       </div>
 
       {/* Session List */}
-      <ScrollArea className="flex-1 min-h-0">
+      <ScrollArea className="flex-1 min-h-0 [&_[data-slot=scroll-area-viewport]>div]:!block">
         {filtered.length === 0 ? (
           <EmptyState />
         ) : (

@@ -1,103 +1,11 @@
-import { useEffect, useMemo, useRef } from "react";
-import { ScrollArea } from "./ui/scroll-area";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { MessageBlock } from "./message-block";
-import { ContextChip } from "./context-chip";
-import type {
-  ContextType,
-  NormalizedBlock,
-  NormalizedMessage,
-  NormalizedMessageBlock,
-  SessionTimeline,
-} from "../../../shared/contracts";
+import { ArrowUp, ArrowDown } from "lucide-react";
+import { cn } from "../lib/utils";
+import type { SessionTimeline } from "../../../shared/contracts";
 import { useTraceStore } from "../stores/trace-store";
 
-const EMPTY_INSTRUCTIONS: NormalizedBlock[] = [];
-
-type RenderItem =
-  | {
-      kind: "context-group";
-      contextType: ContextType | null;
-      label: string;
-      blocks: NormalizedMessageBlock[];
-      totalChars: number;
-    }
-  | { kind: "message"; message: NormalizedMessage };
-
-const CONTEXT_LABELS: Record<string, string> = {
-  "system-reminder": "System Reminder",
-  "hook-output": "Hook Output",
-  "skills-list": "Skills List",
-  "claude-md": "CLAUDE.md Context",
-};
-
-function buildRenderItems(messages: NormalizedMessage[]): RenderItem[] {
-  const items: RenderItem[] = [];
-
-  for (const msg of messages) {
-    // Walk blocks in order, emitting context-groups and organic message
-    // segments inline to preserve the original sequence.
-    let currentGroup: {
-      contextType: ContextType | null;
-      blocks: NormalizedMessageBlock[];
-      totalChars: number;
-    } | null = null;
-    let organicBlocks: NormalizedMessageBlock[] = [];
-
-    const flushGroup = () => {
-      if (currentGroup) {
-        items.push({
-          kind: "context-group",
-          contextType: currentGroup.contextType,
-          label: CONTEXT_LABELS[currentGroup.contextType ?? ""] ?? "Injected Context",
-          blocks: currentGroup.blocks,
-          totalChars: currentGroup.totalChars,
-        });
-        currentGroup = null;
-      }
-    };
-
-    const flushOrganic = () => {
-      if (organicBlocks.length > 0) {
-        items.push({
-          kind: "message",
-          message: { ...msg, blocks: organicBlocks },
-        });
-        organicBlocks = [];
-      }
-    };
-
-    for (const block of msg.blocks) {
-      if (block.meta?.injected) {
-        flushOrganic();
-        const ct = block.meta.contextType;
-        if (currentGroup && currentGroup.contextType === ct) {
-          currentGroup.blocks.push(block);
-          currentGroup.totalChars += block.meta.charCount;
-        } else {
-          flushGroup();
-          currentGroup = {
-            contextType: ct,
-            blocks: [block],
-            totalChars: block.meta.charCount,
-          };
-        }
-      } else {
-        flushGroup();
-        organicBlocks.push(block);
-      }
-    }
-    flushGroup();
-    flushOrganic();
-  }
-
-  return items;
-}
-
-function extractGroupContent(blocks: NormalizedMessageBlock[]): string {
-  return blocks
-    .map((b) => (b.type === "text" ? b.text : `[${b.type}]`))
-    .join("\n\n");
-}
+const SCROLL_THRESHOLD = 120;
 
 interface ConversationViewProps {
   timeline?: SessionTimeline;
@@ -107,22 +15,76 @@ interface ConversationViewProps {
 export function ConversationView({ timeline, rawMode }: ConversationViewProps) {
   const storeTrace = useTraceStore((state) => state.trace);
   const storeRawMode = useTraceStore((state) => state.rawMode);
-  const instructions = useTraceStore(
-    (state) => state.trace?.instructions ?? EMPTY_INSTRUCTIONS,
-  );
-  const bottomRef = useRef<HTMLDivElement>(null);
   const activeTimeline = timeline ?? storeTrace?.timeline ?? { messages: [] };
   const activeRawMode = rawMode ?? storeRawMode;
   const messages = activeTimeline.messages;
 
-  const renderItems = useMemo(
-    () => (activeRawMode ? null : buildRenderItems(messages)),
-    [messages, activeRawMode],
-  );
+  const viewportRef = useRef<HTMLDivElement | null>(null);
+  const [showTop, setShowTop] = useState(false);
+  const [showBottom, setShowBottom] = useState(false);
+  const [hasNew, setHasNew] = useState(false);
+  const prevCountRef = useRef(messages.length);
 
+  const updateButtons = useCallback(() => {
+    const el = viewportRef.current;
+    if (!el) return;
+    const { scrollTop, scrollHeight, clientHeight } = el;
+    setShowTop(scrollTop > SCROLL_THRESHOLD);
+    const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+    setShowBottom(distanceFromBottom > SCROLL_THRESHOLD);
+  }, []);
+
+  // Detect new messages while not at bottom
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+    if (messages.length > prevCountRef.current) {
+      const el = viewportRef.current;
+      if (el) {
+        const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+        if (distanceFromBottom > SCROLL_THRESHOLD) {
+          setHasNew(true);
+        }
+      }
+    }
+    prevCountRef.current = messages.length;
+  }, [messages.length]);
+
+  // Attach scroll listener to the viewport
+  useEffect(() => {
+    const el = viewportRef.current;
+    if (!el) return;
+    const onScroll = () => {
+      updateButtons();
+      // Clear new indicator when scrolled to bottom
+      const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+      if (distanceFromBottom <= SCROLL_THRESHOLD) {
+        setHasNew(false);
+      }
+    };
+    el.addEventListener("scroll", onScroll, { passive: true });
+    updateButtons();
+    return () => el.removeEventListener("scroll", onScroll);
+  }, [updateButtons]);
+
+  // Grab the viewport element from radix ScrollArea
+  const containerRef = useCallback((node: HTMLDivElement | null) => {
+    if (node) {
+      const viewport = node.querySelector("[data-slot='scroll-area-viewport']");
+      viewportRef.current = viewport as HTMLDivElement | null;
+      updateButtons();
+    }
+  }, [updateButtons]);
+
+  const scrollToTop = () => {
+    viewportRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const scrollToBottom = () => {
+    const el = viewportRef.current;
+    if (el) {
+      el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+      setHasNew(false);
+    }
+  };
 
   if (messages.length === 0) {
     return (
@@ -132,47 +94,44 @@ export function ConversationView({ timeline, rawMode }: ConversationViewProps) {
     );
   }
 
-  const instructionsText = instructions
-    .filter((b: NormalizedBlock) => b.type === "text")
-    .map((b: NormalizedBlock) => (b as { type: "text"; text: string }).text)
-    .join("\n");
-
   return (
-    <ScrollArea className="h-full">
-      <div className="space-y-5 p-6 max-w-4xl mx-auto">
-        {instructions.length > 0 && (
-          <ContextChip
-            contextType="system-reminder"
-            label="System Instructions"
-            charCount={instructionsText.length}
-            content={instructionsText}
-            defaultExpanded={false}
-          />
-        )}
-        {activeRawMode
-          ? messages.map((msg, i) => (
-              <MessageBlock key={`msg-${i}`} message={msg} rawMode />
-            ))
-          : renderItems!.map((item, i) =>
-              item.kind === "context-group" ? (
-                <ContextChip
-                  key={`ctx-${i}`}
-                  contextType={item.contextType}
-                  label={item.label}
-                  charCount={item.totalChars}
-                  content={extractGroupContent(item.blocks)}
-                  defaultExpanded={false}
-                />
-              ) : (
-                <MessageBlock
-                  key={`msg-${i}`}
-                  message={item.message}
-                  rawMode={false}
-                />
-              ),
-            )}
-        <div ref={bottomRef} />
+    <div className="relative h-full" ref={containerRef}>
+      <div className="h-full overflow-auto" ref={(el) => { viewportRef.current = el; }}>
+        <div className="space-y-3 p-6 max-w-4xl mx-auto">
+          {messages.map((msg, i) => (
+            <MessageBlock
+              key={`msg-${i}`}
+              message={msg}
+              rawMode={activeRawMode}
+            />
+          ))}
+        </div>
       </div>
-    </ScrollArea>
+
+      {/* Scroll to top */}
+      {showTop && (
+        <button
+          className="absolute top-3 right-4 z-10 flex items-center gap-1 px-2.5 py-1.5 text-xs bg-card border border-border shadow-sm hover:bg-accent transition-colors"
+          onClick={scrollToTop}
+        >
+          <ArrowUp className="h-3 w-3" />
+          Top
+        </button>
+      )}
+
+      {/* Scroll to latest */}
+      {showBottom && (
+        <button
+          className="absolute bottom-3 right-4 z-10 flex items-center gap-1 px-2.5 py-1.5 text-xs bg-card border border-border shadow-sm hover:bg-accent transition-colors"
+          onClick={scrollToBottom}
+        >
+          <ArrowDown className="h-3 w-3" />
+          Latest
+          {hasNew && (
+            <span className="ml-1 h-1.5 w-1.5 rounded-full bg-accent-brand animate-pulse" />
+          )}
+        </button>
+      )}
+    </div>
   );
 }

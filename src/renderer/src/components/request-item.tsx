@@ -16,12 +16,6 @@ function statusColor(code: number | null): string {
   return "text-muted-foreground";
 }
 
-function formatSize(bytes: number | null): string {
-  if (bytes === null) return "";
-  if (bytes < 1024) return `${bytes}B`;
-  return `${Math.round(bytes / 1024)}KB`;
-}
-
 function formatDuration(ms: number | null): string {
   if (ms === null) return "";
   if (ms < 1000) return `${ms}ms`;
@@ -42,11 +36,11 @@ export function RequestItem({ request, isSelected, onClick }: RequestItemProps) 
       )}
       onClick={onClick}
     >
-      <div className="flex items-center gap-2 text-xs font-mono">
-        <span className="font-medium">{request.method}</span>
-        <span className="truncate flex-1 text-muted-foreground">
-          {request.path}
-        </span>
+      <div className="text-xs font-mono truncate">
+        <span className="font-medium">{request.method}</span>{" "}
+        <span className="text-muted-foreground">{request.path}</span>
+      </div>
+      <div className="flex items-center gap-2 mt-1 text-[11px]">
         <span className={statusColor(request.statusCode)}>
           {request.statusCode ?? "..."}
         </span>
@@ -54,7 +48,7 @@ export function RequestItem({ request, isSelected, onClick }: RequestItemProps) 
           {formatDuration(request.durationMs)}
         </span>
         {request.model && (
-          <Badge variant="secondary" className="text-[11px] px-1 py-0">
+          <Badge variant="secondary" className="text-[10px] px-1 py-0 truncate max-w-[220px]">
             {request.model}
           </Badge>
         )}

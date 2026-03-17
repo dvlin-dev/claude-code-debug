@@ -3,6 +3,8 @@ import type { ExchangeDetailVM, SessionTraceVM } from "../../../shared/contracts
 import { getElectronAPI } from "../lib/electron-api";
 import { useSessionStore } from "./session-store";
 
+export type ContentTab = "messages" | "system" | "tools" | "other";
+
 interface TraceState {
   trace: SessionTraceVM | null;
   selectedExchangeId: string | null;
@@ -10,10 +12,12 @@ interface TraceState {
   exchangeDetails: Record<string, ExchangeDetailVM>;
   inspectorOpen: boolean;
   rawMode: boolean;
+  contentTab: ContentTab;
   loadTrace: (sessionId: string) => Promise<void>;
   selectExchange: (exchangeId: string | null) => Promise<void>;
   toggleInspector: () => void;
   toggleRawMode: () => void;
+  setContentTab: (tab: ContentTab) => void;
   clear: () => void;
 }
 
@@ -43,6 +47,7 @@ export const useTraceStore = create<TraceState>((set, get) => {
     exchangeDetails: {},
     inspectorOpen: false,
     rawMode: false,
+    contentTab: "messages" as ContentTab,
 
     loadTrace: async (sessionId) => {
       const api = getElectronAPI();
@@ -90,6 +95,7 @@ export const useTraceStore = create<TraceState>((set, get) => {
     toggleInspector: () =>
       set((state) => ({ inspectorOpen: !state.inspectorOpen })),
     toggleRawMode: () => set((state) => ({ rawMode: !state.rawMode })),
+    setContentTab: (tab: ContentTab) => set({ contentTab: tab }),
     clear: () => {
       syncVersion++;
       set({
@@ -99,6 +105,7 @@ export const useTraceStore = create<TraceState>((set, get) => {
         exchangeDetails: {},
         inspectorOpen: false,
         rawMode: false,
+        contentTab: "messages" as ContentTab,
       });
     },
   };

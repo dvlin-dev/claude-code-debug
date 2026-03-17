@@ -42,27 +42,33 @@ export function SessionItem({ session, isSelected, onClick }: SessionItemProps) 
       )}
       onClick={onClick}
     >
-      <p className="text-sm font-medium truncate">{stripXmlTags(session.title)}</p>
-      <div className="flex items-center gap-1.5 mt-1.5">
-        <Badge
-          variant="secondary"
-          className={cn(
-            "text-[11px] px-1.5 py-0 border-0",
-            getProviderBadgeClasses(session.providerId),
-          )}
-        >
-          {session.providerLabel}
-        </Badge>
-        {session.model && (
-          <Badge variant="secondary" className="text-[11px] px-1.5 py-0">
-            {session.model}
+      <div className="overflow-hidden">
+        <p className="text-sm font-medium truncate">{stripXmlTags(session.title)}</p>
+      </div>
+      <div className="relative mt-1.5 overflow-hidden">
+        <div className="flex items-center gap-1.5 pr-16">
+          <Badge
+            variant="secondary"
+            className={cn(
+              "text-[11px] px-1.5 py-0 border-0 shrink-0",
+              getProviderBadgeClasses(session.providerId),
+            )}
+          >
+            {session.providerLabel}
           </Badge>
-        )}
-        <Badge variant="secondary" className="text-[11px] px-1.5 py-0 font-mono">
-          {session.exchangeCount}
-        </Badge>
-        <span className="text-[11px] text-muted-foreground ml-auto shrink-0">
-          {formatTimeAgo(session.updatedAt)}
+          {session.model && (
+            <Badge variant="secondary" className="text-[11px] px-1.5 py-0 truncate min-w-0">
+              {session.model}
+            </Badge>
+          )}
+          <Badge variant="secondary" className="text-[11px] px-1.5 py-0 font-mono shrink-0">
+            {session.exchangeCount}
+          </Badge>
+        </div>
+        <span className="absolute right-0 top-0 bottom-0 flex items-center">
+          <Badge variant="secondary" className="text-[11px] px-1.5 py-0 shrink-0">
+            {formatTimeAgo(session.updatedAt)}
+          </Badge>
         </span>
       </div>
     </button>
