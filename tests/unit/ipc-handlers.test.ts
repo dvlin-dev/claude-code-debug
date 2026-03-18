@@ -4,19 +4,67 @@ import { IPC } from "../../src/shared/ipc-channels";
 const handleMock = vi.fn();
 const sendMock = vi.fn();
 const openExternalMock = vi.fn();
+const showItemInFolderMock = vi.fn();
+const showSaveDialogMock = vi.fn();
+const showOpenDialogMock = vi.fn();
 
 vi.mock("electron", () => ({
   ipcMain: {
     handle: handleMock,
   },
+  dialog: {
+    showSaveDialog: showSaveDialogMock,
+    showOpenDialog: showOpenDialogMock,
+  },
   shell: {
     openExternal: openExternalMock,
+    showItemInFolder: showItemInFolderMock,
   },
 }));
+
+function createRegisterDeps(overrides: Record<string, unknown> = {}) {
+  return {
+    profileStore: {
+      getProfiles: vi.fn().mockReturnValue([]),
+      saveProfiles: vi.fn(),
+    },
+    proxyManager: {
+      startProfile: vi.fn(),
+      stopProfile: vi.fn(),
+      getStatuses: vi.fn().mockReturnValue({}),
+    },
+    sessionQueryService: {
+      listSessions: vi.fn().mockResolvedValue([]),
+      getSessionTrace: vi.fn(),
+    },
+    exchangeQueryService: {
+      getExchangeDetail: vi.fn(),
+    },
+    exportData: vi.fn(),
+    importData: vi.fn(),
+    clearHistory: vi.fn(),
+    getMainWindow: () =>
+      ({
+        webContents: {
+          send: sendMock,
+        },
+      }) as never,
+    updateService: {
+      getState: vi.fn(),
+      checkForUpdates: vi.fn(),
+      downloadUpdate: vi.fn(),
+      quitAndInstall: vi.fn(),
+      subscribe: vi.fn(() => () => {}),
+    },
+    ...overrides,
+  } as never;
+}
 
 describe("IPC Channels", () => {
   it("defines all required channels", () => {
     expect(IPC.OPEN_EXTERNAL).toBe("app:open-external");
+    expect(IPC.EXPORT_APP_DATA).toBe("app:export-data");
+    expect(IPC.IMPORT_APP_DATA).toBe("app:import-data");
     expect(IPC.GET_PROFILES).toBe("profiles:get");
     expect(IPC.SAVE_PROFILES).toBe("profiles:save");
     expect(IPC.START_PROFILE).toBe("profiles:start");
@@ -55,6 +103,9 @@ describe("registerIpcHandlers", () => {
     handleMock.mockReset();
     sendMock.mockReset();
     openExternalMock.mockReset();
+    showItemInFolderMock.mockReset();
+    showSaveDialogMock.mockReset();
+    showOpenDialogMock.mockReset();
   });
 
   it("registers profile-aware handlers and broadcasts status changes", async () => {
@@ -73,52 +124,36 @@ describe("registerIpcHandlers", () => {
         autoStart: false,
       },
     ]);
-    const saveProfiles = vi.fn();
     const startProfile = vi.fn().mockResolvedValue(undefined);
     const stopProfile = vi.fn().mockResolvedValue(undefined);
     const getStatuses = vi.fn().mockReturnValue({
       "anthropic-dev": { isRunning: true, port: 8888 },
     });
-    const listSessions = vi.fn().mockResolvedValue([]);
-    const getSessionTrace = vi.fn();
-    const getExchangeDetail = vi.fn();
-    const clearHistory = vi.fn();
 
-    registerIpcHandlers({
-      profileStore: {
-        getProfiles,
-        saveProfiles,
-      } as never,
-      proxyManager: {
-        startProfile,
-        stopProfile,
-        getStatuses,
-      } as never,
-      sessionQueryService: {
-        listSessions,
-        getSessionTrace,
-      } as never,
-      exchangeQueryService: {
-        getExchangeDetail,
-      } as never,
-      clearHistory,
-      getMainWindow: () =>
-        ({
-          webContents: {
-            send: sendMock,
-          },
-        }) as never,
-      updateService: {
-        getState: vi.fn(),
-        checkForUpdates: vi.fn(),
-        downloadUpdate: vi.fn(),
-        quitAndInstall: vi.fn(),
-        subscribe: vi.fn(() => () => {}),
-      } as never,
-    });
+    registerIpcHandlers(
+      createRegisterDeps({
+        profileStore: {
+          getProfiles,
+          saveProfiles: vi.fn(),
+        },
+        proxyManager: {
+          startProfile,
+          stopProfile,
+          getStatuses,
+        },
+      }),
+    );
 
     expect(handleMock).toHaveBeenCalledWith(
       IPC.OPEN_EXTERNAL,
+      expect.any(Function),
+    );
+    expect(handleMock).toHaveBeenCalledWith(
+      IPC.EXPORT_APP_DATA,
+      expect.any(Function),
+    );
+    expect(handleMock).toHaveBeenCalledWith(
+      IPC.IMPORT_APP_DATA,
       expect.any(Function),
     );
     expect(handleMock).toHaveBeenCalledWith(
@@ -157,7 +192,6 @@ describe("registerIpcHandlers", () => {
     const startHandler = handleMock.mock.calls.find(
       ([channel]) => channel === IPC.START_PROFILE,
     )?.[1];
-    expect(startHandler).toBeTypeOf("function");
 
     await startHandler?.({}, "anthropic-dev");
 
@@ -178,34 +212,7 @@ describe("registerIpcHandlers", () => {
     );
 
     openExternalMock.mockResolvedValue("");
-
-    registerIpcHandlers({
-      profileStore: {
-        getProfiles: vi.fn(),
-        saveProfiles: vi.fn(),
-      } as never,
-      proxyManager: {
-        startProfile: vi.fn(),
-        stopProfile: vi.fn(),
-        getStatuses: vi.fn().mockReturnValue({}),
-      } as never,
-      sessionQueryService: {
-        listSessions: vi.fn(),
-        getSessionTrace: vi.fn(),
-      } as never,
-      exchangeQueryService: {
-        getExchangeDetail: vi.fn(),
-      } as never,
-      clearHistory: vi.fn(),
-      getMainWindow: () => null,
-      updateService: {
-        getState: vi.fn(),
-        checkForUpdates: vi.fn(),
-        downloadUpdate: vi.fn(),
-        quitAndInstall: vi.fn(),
-        subscribe: vi.fn(() => () => {}),
-      } as never,
-    });
+    registerIpcHandlers(createRegisterDeps({ getMainWindow: () => null }));
 
     const openExternalHandler = handleMock.mock.calls.find(
       ([channel]) => channel === IPC.OPEN_EXTERNAL,
@@ -216,6 +223,117 @@ describe("registerIpcHandlers", () => {
     expect(openExternalMock).toHaveBeenCalledWith(
       "https://github.com/dvlin-dev/agent-trace",
     );
+  });
+
+  it("exports app data through the save dialog", async () => {
+    const { registerIpcHandlers } = await import(
+      "../../src/main/ipc/register-ipc"
+    );
+    const exportData = vi.fn().mockReturnValue({
+      filePath: "/tmp/agent-trace-backup.zip",
+      profileCount: 1,
+      sessionCount: 2,
+      exchangeCount: 3,
+    });
+    showSaveDialogMock.mockResolvedValue({
+      canceled: false,
+      filePath: "/tmp/agent-trace-backup.zip",
+    });
+
+    registerIpcHandlers(
+      createRegisterDeps({
+        exportData,
+        getMainWindow: () => null,
+      }),
+    );
+
+    const exportHandler = handleMock.mock.calls.find(
+      ([channel]) => channel === IPC.EXPORT_APP_DATA,
+    )?.[1];
+
+    const result = await exportHandler?.();
+
+    expect(showSaveDialogMock).toHaveBeenCalled();
+    expect(exportData).toHaveBeenCalledWith("/tmp/agent-trace-backup.zip");
+    expect(showItemInFolderMock).toHaveBeenCalledWith(
+      "/tmp/agent-trace-backup.zip",
+    );
+    expect(result).toEqual({
+      filePath: "/tmp/agent-trace-backup.zip",
+      profileCount: 1,
+      sessionCount: 2,
+      exchangeCount: 3,
+    });
+  });
+
+  it("imports app data through the open dialog and broadcasts refresh events", async () => {
+    const { registerIpcHandlers } = await import(
+      "../../src/main/ipc/register-ipc"
+    );
+    const importedProfiles = [
+      {
+        id: "anthropic-dev",
+        name: "Anthropic Dev",
+        providerId: "anthropic",
+        upstreamBaseUrl: "https://api.anthropic.com",
+        localPort: 8888,
+        enabled: true,
+        autoStart: true,
+      },
+    ];
+    const importData = vi.fn().mockResolvedValue({
+      filePath: "/tmp/agent-trace-backup.zip",
+      profileCount: 1,
+      sessionCount: 2,
+      exchangeCount: 3,
+    });
+    showOpenDialogMock.mockResolvedValue({
+      canceled: false,
+      filePaths: ["/tmp/agent-trace-backup.zip"],
+    });
+
+    registerIpcHandlers(
+      createRegisterDeps({
+        profileStore: {
+          getProfiles: vi.fn().mockReturnValue(importedProfiles),
+          saveProfiles: vi.fn(),
+        },
+        proxyManager: {
+          startProfile: vi.fn(),
+          stopProfile: vi.fn(),
+          getStatuses: vi.fn().mockReturnValue({
+            "anthropic-dev": { isRunning: true, port: 8888 },
+          }),
+        },
+        importData,
+      }),
+    );
+
+    const importHandler = handleMock.mock.calls.find(
+      ([channel]) => channel === IPC.IMPORT_APP_DATA,
+    )?.[1];
+
+    const result = await importHandler?.();
+
+    expect(showOpenDialogMock).toHaveBeenCalled();
+    expect(importData).toHaveBeenCalledWith("/tmp/agent-trace-backup.zip");
+    expect(sendMock).toHaveBeenCalledWith(IPC.PROFILES_CHANGED, {
+      profiles: importedProfiles,
+    });
+    expect(sendMock).toHaveBeenCalledWith(IPC.PROFILE_STATUS_CHANGED, {
+      statuses: {
+        "anthropic-dev": { isRunning: true, port: 8888 },
+      },
+    });
+    expect(sendMock).toHaveBeenCalledWith(IPC.TRACE_RESET, {
+      clearedAt: expect.any(String),
+    });
+    expect(result).toEqual({
+      filePath: "/tmp/agent-trace-backup.zip",
+      profileCount: 1,
+      sessionCount: 2,
+      exchangeCount: 3,
+    });
   });
 
   it("restarts a running profile after saving changed profile settings", async () => {
@@ -251,38 +369,19 @@ describe("registerIpcHandlers", () => {
         "anthropic-dev": { isRunning: true, port: 9999 },
       });
 
-    registerIpcHandlers({
-      profileStore: {
-        getProfiles,
-        saveProfiles,
-      } as never,
-      proxyManager: {
-        startProfile,
-        stopProfile,
-        getStatuses,
-      } as never,
-      sessionQueryService: {
-        listSessions: vi.fn().mockResolvedValue([]),
-        getSessionTrace: vi.fn(),
-      } as never,
-      exchangeQueryService: {
-        getExchangeDetail: vi.fn(),
-      } as never,
-      clearHistory: vi.fn(),
-      getMainWindow: () =>
-        ({
-          webContents: {
-            send: sendMock,
-          },
-        }) as never,
-      updateService: {
-        getState: vi.fn(),
-        checkForUpdates: vi.fn(),
-        downloadUpdate: vi.fn(),
-        quitAndInstall: vi.fn(),
-        subscribe: vi.fn(() => () => {}),
-      } as never,
-    });
+    registerIpcHandlers(
+      createRegisterDeps({
+        profileStore: {
+          getProfiles,
+          saveProfiles,
+        },
+        proxyManager: {
+          startProfile,
+          stopProfile,
+          getStatuses,
+        },
+      }),
+    );
 
     const saveHandler = handleMock.mock.calls.find(
       ([channel]) => channel === IPC.SAVE_PROFILES,
@@ -343,32 +442,11 @@ describe("registerIpcHandlers", () => {
       }),
     };
 
-    registerIpcHandlers({
-      profileStore: {
-        getProfiles: vi.fn().mockReturnValue([]),
-        saveProfiles: vi.fn(),
-      } as never,
-      proxyManager: {
-        startProfile: vi.fn(),
-        stopProfile: vi.fn(),
-        getStatuses: vi.fn().mockReturnValue({}),
-      } as never,
-      sessionQueryService: {
-        listSessions: vi.fn().mockResolvedValue([]),
-        getSessionTrace: vi.fn(),
-      } as never,
-      exchangeQueryService: {
-        getExchangeDetail: vi.fn(),
-      } as never,
-      clearHistory: vi.fn(),
-      getMainWindow: () =>
-        ({
-          webContents: {
-            send: sendMock,
-          },
-        }) as never,
-      updateService,
-    });
+    registerIpcHandlers(
+      createRegisterDeps({
+        updateService,
+      }),
+    );
 
     expect(handleMock).toHaveBeenCalledWith(
       IPC.GET_UPDATE_STATE,
@@ -402,44 +480,15 @@ describe("registerIpcHandlers", () => {
     );
     const clearHistory = vi.fn();
 
-    registerIpcHandlers({
-      profileStore: {
-        getProfiles: vi.fn().mockReturnValue([]),
-        saveProfiles: vi.fn(),
-      } as never,
-      proxyManager: {
-        startProfile: vi.fn(),
-        stopProfile: vi.fn(),
-        getStatuses: vi.fn().mockReturnValue({}),
-      } as never,
-      sessionQueryService: {
-        listSessions: vi.fn().mockResolvedValue([]),
-        getSessionTrace: vi.fn(),
-      } as never,
-      exchangeQueryService: {
-        getExchangeDetail: vi.fn(),
-      } as never,
-      clearHistory,
-      getMainWindow: () =>
-        ({
-          webContents: {
-            send: sendMock,
-          },
-        }) as never,
-      updateService: {
-        getState: vi.fn(),
-        checkForUpdates: vi.fn(),
-        downloadUpdate: vi.fn(),
-        quitAndInstall: vi.fn(),
-        subscribe: vi.fn(() => () => {}),
-      } as never,
-    });
+    registerIpcHandlers(
+      createRegisterDeps({
+        clearHistory,
+      }),
+    );
 
     const clearHandler = handleMock.mock.calls.find(
       ([channel]) => channel === IPC.CLEAR_HISTORY,
     )?.[1];
-
-    expect(clearHandler).toBeTypeOf("function");
 
     await clearHandler?.();
 

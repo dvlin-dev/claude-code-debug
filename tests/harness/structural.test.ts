@@ -272,7 +272,7 @@ describe("IPC Contract Integrity", () => {
     // Extract invoke channels (not push events)
     const invokeChannels =
       ipcContent.match(
-        /(?:OPEN_|GET_|SAVE_|START_|STOP_|LIST_|CLEAR_|CHECK_|DOWNLOAD_|QUIT_)[A-Z_]+/g,
+        /(?:OPEN_|EXPORT_|IMPORT_|GET_|SAVE_|START_|STOP_|LIST_|CLEAR_|CHECK_|DOWNLOAD_|QUIT_)[A-Z_]+/g,
       ) || [];
 
     for (const channel of invokeChannels) {

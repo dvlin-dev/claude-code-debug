@@ -18,15 +18,18 @@ import { SessionResolver } from "../pipeline/session-resolver";
 import { ExchangeQueryService } from "../queries/exchange-query-service";
 import { SessionQueryService } from "../queries/session-query-service";
 import { ExchangeRepository } from "../storage/exchange-repository";
+import { AppDataService } from "../storage/app-data-service";
 import { HistoryMaintenanceService } from "../storage/history-maintenance-service";
 import { ProfileStore } from "../storage/profile-store";
 import { SessionRepository } from "../storage/session-repository";
 import { createSqliteDatabase } from "../storage/sqlite";
 import { forwardRequest } from "../transport/forwarder";
 import { createProxyManager, type ProxyManager } from "../transport/proxy-manager";
+import type { AppDataTransferResult } from "../../shared/app-data";
 
 export interface AppBootstrapDependencies {
   userDataPath: string;
+  appVersion?: string;
   onTraceCaptured?: (payload: TraceCapturedEvent) => void;
   onProfileStatusChanged?: (payload: ProfileStatusChangedEvent) => void;
   onProfileError?: (message: string) => void;
@@ -39,6 +42,8 @@ export interface AppBootstrap {
   proxyManager: ProxyManager;
   sessionQueryService: SessionQueryService;
   exchangeQueryService: ExchangeQueryService;
+  exportData(filePath: string): AppDataTransferResult;
+  importData(filePath: string): Promise<AppDataTransferResult>;
   getProfiles(): ConnectionProfile[];
   saveProfiles(profiles: ConnectionProfile[]): ConnectionProfile[];
   clearHistory(): void;
@@ -253,6 +258,14 @@ export function createAppBootstrap(
     },
   });
 
+  const appDataService = new AppDataService({
+    appVersion: deps.appVersion ?? "0.0.0",
+    profileStore,
+    sessionRepository,
+    exchangeRepository,
+    proxyManager,
+  });
+
   return {
     providerCatalog,
     protocolAdapters,
@@ -260,6 +273,12 @@ export function createAppBootstrap(
     proxyManager,
     sessionQueryService,
     exchangeQueryService,
+    exportData(filePath) {
+      return appDataService.exportToFile(filePath);
+    },
+    importData(filePath) {
+      return appDataService.importFromFile(filePath);
+    },
 
     getProfiles() {
       return profileStore.getProfiles();

@@ -9,10 +9,13 @@ import type {
   TraceCapturedEvent,
   TraceResetEvent,
 } from "./contracts";
+import type { AppDataTransferResult } from "./app-data";
 import type { UpdateState } from "./update";
 
 export interface ElectronAPI {
   openExternal(url: string): Promise<void>;
+  exportAppData(): Promise<AppDataTransferResult | null>;
+  importAppData(): Promise<AppDataTransferResult | null>;
   getProfiles(): Promise<ConnectionProfile[]>;
   saveProfiles(input: ConnectionProfile[]): Promise<ConnectionProfile[]>;
   startProfile(profileId: string): Promise<void>;

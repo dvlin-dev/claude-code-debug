@@ -12,10 +12,12 @@ import { Button } from "./ui/button";
 import { useAppStore } from "../stores/app-store";
 import { useProfileStore } from "../stores/profile-store";
 import { useSessionStore } from "../stores/session-store";
+import { useTraceStore } from "../stores/trace-store";
 import { ProfileForm } from "../features/profiles/profile-form";
 import { cn } from "../lib/utils";
+import { getElectronAPI } from "../lib/electron-api";
 import { toast } from "sonner";
-import { Github, ExternalLink, Trash2, Sparkles, Pencil } from "lucide-react";
+import { Github, ExternalLink, Trash2, Sparkles, Pencil, Download, Upload } from "lucide-react";
 import type { ConnectionProfile } from "../../../shared/contracts";
 
 interface SettingsDialogProps {
@@ -30,9 +32,23 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     downloadUpdate,
     quitAndInstallUpdate,
   } = useAppStore();
-  const { profiles, statuses, initialized, initialize, startProfile, stopProfile, upsertProfile, deleteProfile } =
+  const {
+    profiles,
+    statuses,
+    initialized,
+    initialize,
+    startProfile,
+    stopProfile,
+    upsertProfile,
+    deleteProfile,
+    setProfiles,
+    setStatuses,
+  } =
     useProfileStore();
   const clearHistory = useSessionStore((s) => s.clearHistory);
+  const loadSessions = useSessionStore((s) => s.loadSessions);
+  const resetSessions = useSessionStore((s) => s.reset);
+  const clearTrace = useTraceStore((s) => s.clear);
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingProfile, setEditingProfile] = useState<ConnectionProfile | null>(null);
   const [deletingProfile, setDeletingProfile] = useState<ConnectionProfile | null>(null);
@@ -83,6 +99,20 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
       default: return "";
     }
   })();
+
+  async function syncImportedState(): Promise<void> {
+    const api = getElectronAPI();
+    const [nextProfiles, nextStatuses] = await Promise.all([
+      api.getProfiles(),
+      api.getProfileStatuses(),
+    ]);
+
+    setProfiles(nextProfiles);
+    setStatuses(nextStatuses);
+    clearTrace();
+    resetSessions();
+    await loadSessions();
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -176,18 +206,74 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
               <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
                 Data
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-1.5 text-destructive hover:text-destructive"
-                onClick={async () => {
-                  await clearHistory();
-                  toast.success("History cleared");
-                }}
-              >
-                <Trash2 className="h-3 w-3" />
-                Clear all history
-              </Button>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5"
+                  onClick={async () => {
+                    try {
+                      const result = await getElectronAPI().exportAppData();
+                      if (!result) {
+                        return;
+                      }
+                      toast.success("Data exported", {
+                        description: `${result.profileCount} profiles, ${result.sessionCount} sessions, ${result.exchangeCount} exchanges`,
+                      });
+                    } catch (error) {
+                      toast.error("Export failed", {
+                        description: error instanceof Error ? error.message : String(error),
+                      });
+                    }
+                  }}
+                >
+                  <Download className="h-3 w-3" />
+                  Export data
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5"
+                  onClick={async () => {
+                    if (!window.confirm("Importing data will replace current profiles and history. Continue?")) {
+                      return;
+                    }
+
+                    try {
+                      const result = await getElectronAPI().importAppData();
+                      if (!result) {
+                        return;
+                      }
+                      await syncImportedState();
+                      toast.success("Data imported", {
+                        description: `${result.profileCount} profiles, ${result.sessionCount} sessions, ${result.exchangeCount} exchanges`,
+                      });
+                    } catch (error) {
+                      toast.error("Import failed", {
+                        description: error instanceof Error ? error.message : String(error),
+                      });
+                    }
+                  }}
+                >
+                  <Upload className="h-3 w-3" />
+                  Import data
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 text-destructive hover:text-destructive"
+                  onClick={async () => {
+                    if (!window.confirm("This will permanently delete all captured history. Continue?")) {
+                      return;
+                    }
+                    await clearHistory();
+                    toast.success("History cleared");
+                  }}
+                >
+                  <Trash2 className="h-3 w-3" />
+                  Clear all history
+                </Button>
+              </div>
             </div>
 
             {/* Links Section */}

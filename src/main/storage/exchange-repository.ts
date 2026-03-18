@@ -100,6 +100,28 @@ export class ExchangeRepository {
       .all() as ExchangeRow[];
   }
 
+  insertRows(rows: ExchangeRow[]): void {
+    const statement = this.db.prepare(
+      `INSERT OR REPLACE INTO exchanges (
+        exchange_id, session_id, provider_id, profile_id, method, path,
+        started_at, duration_ms, status_code, request_size, response_size,
+        raw_request_headers_json, raw_request_body,
+        raw_response_headers_json, raw_response_body,
+        normalized_json, inspector_json
+      ) VALUES (
+        @exchange_id, @session_id, @provider_id, @profile_id, @method, @path,
+        @started_at, @duration_ms, @status_code, @request_size, @response_size,
+        @raw_request_headers_json, @raw_request_body,
+        @raw_response_headers_json, @raw_response_body,
+        @normalized_json, @inspector_json
+      )`,
+    );
+
+    for (const row of rows) {
+      statement.run(row);
+    }
+  }
+
   deleteBySessionIds(sessionIds: string[]): void {
     if (sessionIds.length === 0) {
       return;

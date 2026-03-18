@@ -99,6 +99,22 @@ export class SessionRepository {
       .all() as SessionRow[];
   }
 
+  insertRows(rows: SessionRow[]): void {
+    const statement = this.db.prepare(
+      `INSERT OR REPLACE INTO sessions (
+        session_id, provider_id, profile_id, external_hint, title, model,
+        started_at, updated_at, exchange_count, matcher_state_json
+      ) VALUES (
+        @session_id, @provider_id, @profile_id, @external_hint, @title, @model,
+        @started_at, @updated_at, @exchange_count, @matcher_state_json
+      )`,
+    );
+
+    for (const row of rows) {
+      statement.run(row);
+    }
+  }
+
   deleteByIds(sessionIds: string[]): void {
     if (sessionIds.length === 0) {
       return;

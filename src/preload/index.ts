@@ -18,6 +18,12 @@ export const electronAPI: ElectronAPI = {
   openExternal: (url: string): Promise<void> =>
     ipcRenderer.invoke(IPC.OPEN_EXTERNAL, url),
 
+  exportAppData: () =>
+    ipcRenderer.invoke(IPC.EXPORT_APP_DATA),
+
+  importAppData: () =>
+    ipcRenderer.invoke(IPC.IMPORT_APP_DATA),
+
   getProfiles: (): Promise<ConnectionProfile[]> =>
     ipcRenderer.invoke(IPC.GET_PROFILES),
 

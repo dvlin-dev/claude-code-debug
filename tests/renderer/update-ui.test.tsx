@@ -4,6 +4,7 @@ import { SettingsDialog } from "../../src/renderer/src/components/settings-dialo
 import { UpdateToastListener } from "../../src/renderer/src/components/update-toast-listener";
 import { useAppStore } from "../../src/renderer/src/stores/app-store";
 import { useProfileStore } from "../../src/renderer/src/stores/profile-store";
+import { useSessionStore } from "../../src/renderer/src/stores/session-store";
 
 const {
   toastInfo,
@@ -14,6 +15,8 @@ const {
   downloadUpdate,
   quitAndInstallUpdate,
   onUpdateStateChanged,
+  exportAppData,
+  importAppData,
 } = vi.hoisted(() => ({
   toastInfo: vi.fn(),
   toastSuccess: vi.fn(),
@@ -23,7 +26,11 @@ const {
   downloadUpdate: vi.fn(),
   quitAndInstallUpdate: vi.fn(),
   onUpdateStateChanged: vi.fn(() => () => {}),
+  exportAppData: vi.fn(),
+  importAppData: vi.fn(),
 }));
+
+const clearHistoryMock = vi.fn();
 
 vi.mock("sonner", () => ({
   toast: {
@@ -40,10 +47,13 @@ vi.mock("../../src/renderer/src/lib/electron-api", () => ({
     startProfile: vi.fn().mockResolvedValue(undefined),
     stopProfile: vi.fn().mockResolvedValue(undefined),
     getProfileStatuses: vi.fn().mockResolvedValue({}),
+    listSessions: vi.fn().mockResolvedValue([]),
     getUpdateState,
     checkForUpdates,
     downloadUpdate,
     quitAndInstallUpdate,
+    exportAppData,
+    importAppData,
     onUpdateStateChanged,
     onTraceCaptured: vi.fn(() => () => {}),
     onTraceReset: vi.fn(() => () => {}),
@@ -69,6 +79,9 @@ describe("update ui", () => {
     downloadUpdate.mockReset().mockResolvedValue(undefined);
     quitAndInstallUpdate.mockReset().mockResolvedValue(undefined);
     onUpdateStateChanged.mockReset().mockReturnValue(() => {});
+    exportAppData.mockReset().mockResolvedValue(null);
+    importAppData.mockReset().mockResolvedValue(null);
+    clearHistoryMock.mockReset().mockResolvedValue(undefined);
     useAppStore.setState({
       initialized: true,
       updateState: {
@@ -100,6 +113,9 @@ describe("update ui", () => {
       },
       initialized: true,
     });
+    useSessionStore.setState({
+      clearHistory: clearHistoryMock,
+    } as never);
   });
 
   it("shows check for updates in settings when idle", () => {
@@ -160,6 +176,68 @@ describe("update ui", () => {
     expect(
       screen.getByRole("button", { name: /add profile/i }),
     ).toBeInTheDocument();
+  });
+
+  it("exports app data from settings", async () => {
+    exportAppData.mockResolvedValue({
+      filePath: "/tmp/agent-trace-backup.zip",
+      profileCount: 1,
+      sessionCount: 2,
+      exchangeCount: 3,
+    });
+
+    render(<SettingsDialog open onOpenChange={() => {}} />);
+    fireEvent.click(screen.getByRole("button", { name: /export data/i }));
+
+    await waitFor(() => {
+      expect(exportAppData).toHaveBeenCalledTimes(1);
+      expect(toastSuccess).toHaveBeenCalledWith(
+        "Data exported",
+        expect.objectContaining({
+          description: "1 profiles, 2 sessions, 3 exchanges",
+        }),
+      );
+    });
+  });
+
+  it("imports app data from settings after confirmation", async () => {
+    Object.defineProperty(window, "confirm", {
+      configurable: true,
+      value: vi.fn(() => true),
+    });
+    importAppData.mockResolvedValue({
+      filePath: "/tmp/agent-trace-backup.zip",
+      profileCount: 1,
+      sessionCount: 2,
+      exchangeCount: 3,
+    });
+
+    render(<SettingsDialog open onOpenChange={() => {}} />);
+    fireEvent.click(screen.getByRole("button", { name: /import data/i }));
+
+    await waitFor(() => {
+      expect(importAppData).toHaveBeenCalledTimes(1);
+      expect(toastSuccess).toHaveBeenCalledWith(
+        "Data imported",
+        expect.objectContaining({
+          description: "1 profiles, 2 sessions, 3 exchanges",
+        }),
+      );
+    });
+  });
+
+  it("requires confirmation before clearing history", async () => {
+    Object.defineProperty(window, "confirm", {
+      configurable: true,
+      value: vi.fn(() => false),
+    });
+
+    render(<SettingsDialog open onOpenChange={() => {}} />);
+    fireEvent.click(screen.getByRole("button", { name: /clear all history/i }));
+
+    await waitFor(() => {
+      expect(clearHistoryMock).not.toHaveBeenCalled();
+    });
   });
 
   it("emits toast notifications for downloaded and error states", async () => {

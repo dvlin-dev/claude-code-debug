@@ -120,6 +120,7 @@ app.whenReady().then(async () => {
 
   appBootstrap = createAppBootstrap({
     userDataPath,
+    appVersion: app.getVersion(),
     onTraceCaptured: (payload) => {
       mainWindow?.webContents.send(IPC.TRACE_CAPTURED, payload);
     },
@@ -136,6 +137,8 @@ app.whenReady().then(async () => {
     proxyManager: appBootstrap.proxyManager,
     sessionQueryService: appBootstrap.sessionQueryService,
     exchangeQueryService: appBootstrap.exchangeQueryService,
+    exportData: (filePath) => appBootstrap!.exportData(filePath),
+    importData: (filePath) => appBootstrap!.importData(filePath),
     clearHistory: () => {
       appBootstrap?.clearHistory();
     },
