@@ -111,7 +111,7 @@ function ToolItem({ tool, rawMode }: { tool: NormalizedTool; rawMode: boolean })
                 <span className="text-xs font-medium text-muted-foreground">Description</span>
               </div>
               {descExpanded && (
-                <div className="text-xs text-foreground/80 mt-2 pl-5 whitespace-pre-wrap">
+                <div className="text-xs text-foreground/75 mt-2 pl-5 whitespace-pre-wrap leading-relaxed">
                   {tool.description}
                 </div>
               )}

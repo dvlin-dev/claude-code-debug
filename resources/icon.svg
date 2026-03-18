@@ -1,38 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
-  <defs>
-    <clipPath id="rounded">
-      <rect width="1024" height="1024" rx="228" ry="228"/>
-    </clipPath>
-  </defs>
 
-  <!-- Background -->
-  <g clip-path="url(#rounded)">
-    <rect width="1024" height="1024" fill="#141414"/>
-
-    <!-- Subtle grid lines for "technical" feel -->
-    <g stroke="#ffffff" stroke-opacity="0.03" stroke-width="1">
-      <line x1="0" y1="256" x2="1024" y2="256"/>
-      <line x1="0" y1="512" x2="1024" y2="512"/>
-      <line x1="0" y1="768" x2="1024" y2="768"/>
-      <line x1="256" y1="0" x2="256" y2="1024"/>
-      <line x1="512" y1="0" x2="512" y2="1024"/>
-      <line x1="768" y1="0" x2="768" y2="1024"/>
-    </g>
-
-    <!-- Main trace waveform — bold angular pulse -->
-    <polyline
-      points="120,580 280,580 340,580 380,300 460,720 540,300 620,720 680,440 740,440 904,440"
-      fill="none"
-      stroke="#E2822B"
-      stroke-width="56"
-      stroke-linecap="square"
-      stroke-linejoin="miter"
-    />
-
-    <!-- Small terminal cursor blink at the end of the trace -->
-    <rect x="904" y="408" width="8" height="64" fill="#E2822B" opacity="0.6"/>
-
-    <!-- Thin baseline reference -->
-    <line x1="120" y1="512" x2="904" y2="512" stroke="#ffffff" stroke-opacity="0.06" stroke-width="2" stroke-dasharray="8,12"/>
-  </g>
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  
+  <image href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDI0IDEwMjQiIHdpZHRoPSIxMDI0IiBoZWlnaHQ9IjEwMjQiPgogIDxkZWZzPgogICAgPGNsaXBQYXRoIGlkPSJyb3VuZGVkIj4KICAgICAgPHJlY3Qgd2lkdGg9IjEwMjQiIGhlaWdodD0iMTAyNCIgcng9IjIyOCIgcnk9IjIyOCIvPgogICAgPC9jbGlwUGF0aD4KICA8L2RlZnM+CgogIDwhLS0gQmFja2dyb3VuZCAtLT4KICA8ZyBjbGlwLXBhdGg9InVybCgjcm91bmRlZCkiPgogICAgPHJlY3Qgd2lkdGg9IjEwMjQiIGhlaWdodD0iMTAyNCIgZmlsbD0iIzE0MTQxNCIvPgoKICAgIDwhLS0gU3VidGxlIGdyaWQgbGluZXMgZm9yICJ0ZWNobmljYWwiIGZlZWwgLS0+CiAgICA8ZyBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS1vcGFjaXR5PSIwLjAzIiBzdHJva2Utd2lkdGg9IjEiPgogICAgICA8bGluZSB4MT0iMCIgeTE9IjI1NiIgeDI9IjEwMjQiIHkyPSIyNTYiLz4KICAgICAgPGxpbmUgeDE9IjAiIHkxPSI1MTIiIHgyPSIxMDI0IiB5Mj0iNTEyIi8+CiAgICAgIDxsaW5lIHgxPSIwIiB5MT0iNzY4IiB4Mj0iMTAyNCIgeTI9Ijc2OCIvPgogICAgICA8bGluZSB4MT0iMjU2IiB5MT0iMCIgeDI9IjI1NiIgeTI9IjEwMjQiLz4KICAgICAgPGxpbmUgeDE9IjUxMiIgeTE9IjAiIHgyPSI1MTIiIHkyPSIxMDI0Ii8+CiAgICAgIDxsaW5lIHgxPSI3NjgiIHkxPSIwIiB4Mj0iNzY4IiB5Mj0iMTAyNCIvPgogICAgPC9nPgoKICAgIDwhLS0gTWFpbiB0cmFjZSB3YXZlZm9ybSDigJQgYm9sZCBhbmd1bGFyIHB1bHNlIC0tPgogICAgPHBvbHlsaW5lCiAgICAgIHBvaW50cz0iMTIwLDU4MCAyODAsNTgwIDM0MCw1ODAgMzgwLDMwMCA0NjAsNzIwIDU0MCwzMDAgNjIwLDcyMCA2ODAsNDQwIDc0MCw0NDAgOTA0LDQ0MCIKICAgICAgZmlsbD0ibm9uZSIKICAgICAgc3Ryb2tlPSIjRTI4MjJCIgogICAgICBzdHJva2Utd2lkdGg9IjU2IgogICAgICBzdHJva2UtbGluZWNhcD0ic3F1YXJlIgogICAgICBzdHJva2UtbGluZWpvaW49Im1pdGVyIgogICAgLz4KCiAgICA8IS0tIFNtYWxsIHRlcm1pbmFsIGN1cnNvciBibGluayBhdCB0aGUgZW5kIG9mIHRoZSB0cmFjZSAtLT4KICAgIDxyZWN0IHg9IjkwNCIgeT0iNDA4IiB3aWR0aD0iOCIgaGVpZ2h0PSI2NCIgZmlsbD0iI0UyODIyQiIgb3BhY2l0eT0iMC42Ii8+CgogICAgPCEtLSBUaGluIGJhc2VsaW5lIHJlZmVyZW5jZSAtLT4KICAgIDxsaW5lIHgxPSIxMjAiIHkxPSI1MTIiIHgyPSI5MDQiIHkyPSI1MTIiIHN0cm9rZT0iI2ZmZmZmZiIgc3Ryb2tlLW9wYWNpdHk9IjAuMDYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWRhc2hhcnJheT0iOCwxMiIvPgogIDwvZz4KPC9zdmc+Cg==" x="102.39999999999998" y="102.39999999999998" width="819.2" height="819.2" />
 </svg>

@@ -56,7 +56,7 @@ function extractInjectedItems(messages: NormalizedMessage[]): InjectedItem[] {
 function SectionContent({ section }: { section: InspectorSection }) {
   if (section.kind === "text") {
     return (
-      <pre className="text-sm whitespace-pre-wrap break-words">
+      <pre className="text-xs text-foreground/75 whitespace-pre-wrap break-words leading-relaxed">
         {section.text}
       </pre>
     );

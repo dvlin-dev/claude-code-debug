@@ -173,7 +173,7 @@ export function MessageBlock({ message, rawMode }: MessageBlockProps) {
           ))}
         </div>
       ) : (
-        <div className="text-sm text-muted-foreground pl-1 whitespace-pre-wrap line-clamp-3">
+        <div className="text-xs text-muted-foreground/70 pl-1 whitespace-pre-wrap line-clamp-3 leading-relaxed">
           {previewText}
         </div>
       )}

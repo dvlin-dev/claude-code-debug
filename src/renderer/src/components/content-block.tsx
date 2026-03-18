@@ -14,7 +14,7 @@ export function ContentBlock({ block }: ContentBlockProps) {
     const text = block.text ?? "";
 
     return (
-      <div className="text-sm whitespace-pre-wrap">
+      <div className="text-xs text-foreground/80 whitespace-pre-wrap leading-relaxed">
         {text}
       </div>
     );
@@ -36,7 +36,7 @@ export function ContentBlock({ block }: ContentBlockProps) {
           Thinking
         </div>
         {expanded && (
-          <div className="px-3 pb-2 text-sm whitespace-pre-wrap">
+          <div className="px-3 pb-2 text-xs text-foreground/80 whitespace-pre-wrap leading-relaxed">
             {block.text}
           </div>
         )}

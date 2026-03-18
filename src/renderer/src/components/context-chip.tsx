@@ -107,7 +107,7 @@ export function ContextChip({
       </div>
       {expanded && (
         <div className="px-3 pb-2 max-h-64 overflow-auto">
-          <pre className="text-[11px] font-mono whitespace-pre-wrap break-all text-muted-foreground">
+          <pre className="text-[11px] font-mono whitespace-pre-wrap break-all text-muted-foreground leading-relaxed">
             {content}
           </pre>
         </div>
