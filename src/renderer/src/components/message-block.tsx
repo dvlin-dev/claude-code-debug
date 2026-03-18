@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { ContentBlock } from "./content-block";
+import { Badge } from "./ui/badge";
 import { cn } from "../lib/utils";
 import { Copy, Check, ChevronRight } from "lucide-react";
 import type {
@@ -9,6 +10,7 @@ import type {
 
 interface MessageBlockProps {
   message: NormalizedMessage;
+  roundNumber?: number | null;
   rawMode?: boolean;
 }
 
@@ -54,11 +56,11 @@ function CopyButton({ text }: { text: string }) {
 
   return (
     <button
-      className="p-1 text-muted-foreground hover:text-foreground hover:bg-accent rounded-sm transition-colors"
+      className="flex h-4 w-4 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
       onClick={handleCopy}
       title="Copy to clipboard"
     >
-      {copied ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
+      {copied ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3" />}
     </button>
   );
 }
@@ -99,7 +101,11 @@ const BLOCK_TYPE_COLORS: Record<string, string> = {
   unknown: "bg-muted text-muted-foreground",
 };
 
-export function MessageBlock({ message, rawMode }: MessageBlockProps) {
+export function MessageBlock({
+  message,
+  roundNumber = null,
+  rawMode,
+}: MessageBlockProps) {
   const [expanded, setExpanded] = useState(false);
   const copyText = rawMode
     ? JSON.stringify(message.blocks, null, 2)
@@ -118,8 +124,18 @@ export function MessageBlock({ message, rawMode }: MessageBlockProps) {
               </span>
             ))}
           </span>
-          <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-            <CopyButton text={copyText} />
+          <div className="relative h-4 w-8 shrink-0">
+            {roundNumber !== null && (
+              <Badge
+                variant="outline"
+                className="absolute right-0 top-0 h-4 px-1.5 text-[10px] transition-opacity group-hover:opacity-0"
+              >
+                #{roundNumber}
+              </Badge>
+            )}
+            <div className="absolute right-0 top-0 opacity-0 transition-opacity group-hover:opacity-100">
+              <CopyButton text={copyText} />
+            </div>
           </div>
         </div>
         <pre className="text-xs font-mono whitespace-pre-wrap break-all overflow-auto">
@@ -162,8 +178,21 @@ export function MessageBlock({ message, rawMode }: MessageBlockProps) {
             </span>
           ))}
         </span>
-        <div className="opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
-          <CopyButton text={copyText} />
+        <div
+          className="relative h-4 w-8 shrink-0"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {roundNumber !== null && (
+            <Badge
+              variant="outline"
+              className="absolute right-0 top-0 h-4 px-1.5 text-[10px] transition-opacity group-hover:opacity-0"
+            >
+              #{roundNumber}
+            </Badge>
+          )}
+          <div className="absolute right-0 top-0 opacity-0 transition-opacity group-hover:opacity-100">
+            <CopyButton text={copyText} />
+          </div>
         </div>
       </div>
       {expanded ? (

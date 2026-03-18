@@ -42,6 +42,33 @@ describe("ConversationView", () => {
     expect(screen.getByText("Hi there")).toBeInTheDocument();
   });
 
+  it("assigns the same round badge to tool/result messages in the same turn", () => {
+    const timeline: SessionTimeline = {
+      messages: [
+        {
+          role: "user",
+          blocks: [{ type: "text", text: "Question" }],
+        },
+        {
+          role: "assistant",
+          blocks: [{ type: "tool-call", name: "search", input: { q: "x" } }],
+        },
+        {
+          role: "tool",
+          blocks: [{ type: "tool-result", content: { ok: true } }],
+        },
+        {
+          role: "assistant",
+          blocks: [{ type: "text", text: "Answer" }],
+        },
+      ],
+    };
+
+    render(<ConversationView timeline={timeline} rawMode={false} />);
+
+    expect(screen.getAllByText("#1")).toHaveLength(4);
+  });
+
   it("renders messages in reverse order when newest-first is selected", () => {
     useTraceStore.setState({ messageOrder: "desc" } as never);
 

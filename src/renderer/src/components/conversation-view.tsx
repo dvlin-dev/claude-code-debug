@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { MessageBlock } from "./message-block";
 import { ArrowUp, ArrowDown } from "lucide-react";
 import { cn } from "../lib/utils";
-import type { SessionTimeline } from "../../../shared/contracts";
+import type { NormalizedMessage, SessionTimeline } from "../../../shared/contracts";
 import { useTraceStore } from "../stores/trace-store";
 import { useSessionStore } from "../stores/session-store";
 
@@ -13,6 +13,31 @@ interface ConversationViewProps {
   rawMode?: boolean;
 }
 
+function isToolResultOnlyMessage(message: NormalizedMessage): boolean {
+  return (
+    message.blocks.length > 0 &&
+    message.blocks.every((block) => block.type === "tool-result")
+  );
+}
+
+function assignRoundNumbers(messages: NormalizedMessage[]) {
+  let currentRound = 0;
+
+  return messages.map((message) => {
+    const startsNewRound =
+      message.role === "user" && !isToolResultOnlyMessage(message);
+
+    if (startsNewRound || (currentRound === 0 && message.role !== "system")) {
+      currentRound += 1;
+    }
+
+    return {
+      message,
+      roundNumber: currentRound > 0 ? currentRound : null,
+    };
+  });
+}
+
 export function ConversationView({ timeline, rawMode }: ConversationViewProps) {
   const storeTrace = useTraceStore((state) => state.trace);
   const storeRawMode = useTraceStore((state) => state.rawMode);
@@ -21,8 +46,9 @@ export function ConversationView({ timeline, rawMode }: ConversationViewProps) {
   const activeTimeline = timeline ?? storeTrace?.timeline ?? { messages: [] };
   const activeRawMode = rawMode ?? storeRawMode;
   const messages = activeTimeline.messages;
+  const messagesWithRounds = assignRoundNumbers(messages);
   const displayMessages =
-    messageOrder === "desc" ? [...messages].reverse() : messages;
+    messageOrder === "desc" ? [...messagesWithRounds].reverse() : messagesWithRounds;
 
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const [showTop, setShowTop] = useState(false);
@@ -157,10 +183,11 @@ export function ConversationView({ timeline, rawMode }: ConversationViewProps) {
     <div className="relative h-full">
       <div className="h-full overflow-auto" ref={setViewportRef}>
         <div className="space-y-3 p-6 max-w-4xl mx-auto">
-          {displayMessages.map((msg, i) => (
+          {displayMessages.map(({ message, roundNumber }, i) => (
             <MessageBlock
               key={`msg-${i}`}
-              message={msg}
+              message={message}
+              roundNumber={roundNumber}
               rawMode={activeRawMode}
             />
           ))}
