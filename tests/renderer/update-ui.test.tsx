@@ -151,6 +151,17 @@ describe("update ui", () => {
     });
   });
 
+  it("opens the add profile form without triggering a hooks crash", () => {
+    render(<SettingsDialog open onOpenChange={() => {}} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /\+ add profile/i }));
+
+    expect(screen.getByText(/connect provider/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /add profile/i }),
+    ).toBeInTheDocument();
+  });
+
   it("emits toast notifications for downloaded and error states", async () => {
     render(<UpdateToastListener />);
 

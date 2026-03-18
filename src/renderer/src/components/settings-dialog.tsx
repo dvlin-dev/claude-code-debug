@@ -117,68 +117,28 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
               <div className="space-y-1">
                 {profiles.map((profile) => {
                   const isRunning = statuses[profile.id]?.isRunning ?? false;
-                  const [rowHovered, setRowHovered] = useState(false);
                   return (
-                    <div
+                    <SettingsProfileRow
                       key={profile.id}
-                      className="flex items-center gap-2 border border-border p-2 rounded-md hover:bg-muted/40 transition-colors"
-                      onMouseEnter={() => setRowHovered(true)}
-                      onMouseLeave={() => setRowHovered(false)}
-                    >
-                      <div
-                        className={cn(
-                          "h-1.5 w-1.5 rounded-full flex-shrink-0",
-                          isRunning ? "bg-success" : "bg-muted-foreground/30",
-                        )}
-                      />
-                      <div className="flex-1 min-w-0">
-                        <div className="text-xs font-medium">{profile.name}</div>
-                        <div className="text-[11px] text-muted-foreground font-mono truncate">
-                          {profile.upstreamBaseUrl}
-                        </div>
-                      </div>
-                      {rowHovered && (
-                        <div className="flex items-center gap-0.5 shrink-0">
-                          <button
-                            className="p-0.5 text-muted-foreground hover:text-foreground transition-colors"
-                            onClick={(e) => { e.stopPropagation(); setEditingProfile(profile); }}
-                            title="Edit profile"
-                          >
-                            <Pencil className="h-3 w-3" />
-                          </button>
-                          <button
-                            className="p-0.5 text-muted-foreground hover:text-red-400 transition-colors"
-                            onClick={(e) => { e.stopPropagation(); setDeletingProfile(profile); }}
-                            title="Delete profile"
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </button>
-                        </div>
-                      )}
-                      <span className="text-[11px] font-mono text-muted-foreground flex-shrink-0">
-                        :{profile.localPort}
-                      </span>
-                      <Button
-                        variant={isRunning ? "destructive" : "outline"}
-                        size="xs"
-                        onClick={async () => {
-                          try {
-                            if (isRunning) {
-                              await stopProfile(profile.id);
-                            } else {
-                              await startProfile(profile.id);
-                            }
-                          } catch (error) {
-                            toast.error("Profile Error", {
-                              description:
-                                error instanceof Error ? error.message : String(error),
-                            });
+                      profile={profile}
+                      isRunning={isRunning}
+                      onEdit={() => setEditingProfile(profile)}
+                      onDelete={() => setDeletingProfile(profile)}
+                      onToggle={async () => {
+                        try {
+                          if (isRunning) {
+                            await stopProfile(profile.id);
+                          } else {
+                            await startProfile(profile.id);
                           }
-                        }}
-                      >
-                        {isRunning ? "Stop" : "Start"}
-                      </Button>
-                    </div>
+                        } catch (error) {
+                          toast.error("Profile Error", {
+                            description:
+                              error instanceof Error ? error.message : String(error),
+                          });
+                        }
+                      }}
+                    />
                   );
                 })}
               </div>
@@ -319,5 +279,74 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
         </Dialog>
       </DialogContent>
     </Dialog>
+  );
+}
+
+interface SettingsProfileRowProps {
+  profile: ConnectionProfile;
+  isRunning: boolean;
+  onEdit: () => void;
+  onDelete: () => void;
+  onToggle: () => Promise<void>;
+}
+
+function SettingsProfileRow({
+  profile,
+  isRunning,
+  onEdit,
+  onDelete,
+  onToggle,
+}: SettingsProfileRowProps) {
+  const [rowHovered, setRowHovered] = useState(false);
+
+  return (
+    <div
+      className="flex items-center gap-2 border border-border p-2 rounded-md hover:bg-muted/40 transition-colors"
+      onMouseEnter={() => setRowHovered(true)}
+      onMouseLeave={() => setRowHovered(false)}
+    >
+      <div
+        className={cn(
+          "h-1.5 w-1.5 rounded-full flex-shrink-0",
+          isRunning ? "bg-success" : "bg-muted-foreground/30",
+        )}
+      />
+      <div className="flex-1 min-w-0">
+        <div className="text-xs font-medium">{profile.name}</div>
+        <div className="text-[11px] text-muted-foreground font-mono truncate">
+          {profile.upstreamBaseUrl}
+        </div>
+      </div>
+      {rowHovered && (
+        <div className="flex items-center gap-0.5 shrink-0">
+          <button
+            className="p-0.5 text-muted-foreground hover:text-foreground transition-colors"
+            onClick={(event) => {
+              event.stopPropagation();
+              onEdit();
+            }}
+            title="Edit profile"
+          >
+            <Pencil className="h-3 w-3" />
+          </button>
+          <button
+            className="p-0.5 text-muted-foreground hover:text-red-400 transition-colors"
+            onClick={(event) => {
+              event.stopPropagation();
+              onDelete();
+            }}
+            title="Delete profile"
+          >
+            <Trash2 className="h-3 w-3" />
+          </button>
+        </div>
+      )}
+      <span className="text-[11px] font-mono text-muted-foreground flex-shrink-0">
+        :{profile.localPort}
+      </span>
+      <Button variant={isRunning ? "destructive" : "outline"} size="xs" onClick={() => void onToggle()}>
+        {isRunning ? "Stop" : "Start"}
+      </Button>
+    </div>
   );
 }
