@@ -138,7 +138,7 @@ describe("createUpdateService", () => {
     expect(service.getState()).toEqual(
       expect.objectContaining({
         status: "idle",
-        message: "Automatic updates are only enabled for packaged macOS builds.",
+        message: "Automatic updates are only enabled for packaged macOS and Windows builds.",
       }),
     );
 
