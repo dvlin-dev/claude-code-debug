@@ -35,7 +35,7 @@ jobs:
       - name: Build app
         run: pnpm build
       - name: Build Windows release artifacts
-        run: pnpm exec node ./scripts/run-electron-builder.cjs --win nsis --x64 --publish never
+        run: pnpm exec node ./scripts/run-electron-builder.cjs --win nsis --x64 --arm64 --publish never
       - name: Publish GitHub release
         uses: softprops/action-gh-release@v2
         with:
