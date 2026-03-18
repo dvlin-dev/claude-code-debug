@@ -4,6 +4,7 @@ import { getElectronAPI } from "../lib/electron-api";
 import { useSessionStore } from "./session-store";
 
 export type ContentTab = "messages" | "system" | "tools" | "other";
+export type MessageOrder = "asc" | "desc";
 
 interface TraceState {
   trace: SessionTraceVM | null;
@@ -13,11 +14,13 @@ interface TraceState {
   inspectorOpen: boolean;
   rawMode: boolean;
   contentTab: ContentTab;
+  messageOrder: MessageOrder;
   loadTrace: (sessionId: string) => Promise<void>;
   selectExchange: (exchangeId: string | null) => Promise<void>;
   toggleInspector: () => void;
   toggleRawMode: () => void;
   setContentTab: (tab: ContentTab) => void;
+  toggleMessageOrder: () => void;
   clear: () => void;
 }
 
@@ -48,6 +51,7 @@ export const useTraceStore = create<TraceState>((set, get) => {
     inspectorOpen: false,
     rawMode: false,
     contentTab: "messages" as ContentTab,
+    messageOrder: "asc" as MessageOrder,
 
     loadTrace: async (sessionId) => {
       const api = getElectronAPI();
@@ -96,6 +100,10 @@ export const useTraceStore = create<TraceState>((set, get) => {
       set((state) => ({ inspectorOpen: !state.inspectorOpen })),
     toggleRawMode: () => set((state) => ({ rawMode: !state.rawMode })),
     setContentTab: (tab: ContentTab) => set({ contentTab: tab }),
+    toggleMessageOrder: () =>
+      set((state) => ({
+        messageOrder: state.messageOrder === "asc" ? "desc" : "asc",
+      })),
     clear: () => {
       syncVersion++;
       set({
@@ -106,6 +114,7 @@ export const useTraceStore = create<TraceState>((set, get) => {
         inspectorOpen: false,
         rawMode: false,
         contentTab: "messages" as ContentTab,
+        messageOrder: "asc" as MessageOrder,
       });
     },
   };

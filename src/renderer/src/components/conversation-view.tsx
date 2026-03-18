@@ -16,10 +16,13 @@ interface ConversationViewProps {
 export function ConversationView({ timeline, rawMode }: ConversationViewProps) {
   const storeTrace = useTraceStore((state) => state.trace);
   const storeRawMode = useTraceStore((state) => state.rawMode);
+  const messageOrder = useTraceStore((state) => state.messageOrder);
   const selectedSessionId = useSessionStore((s) => s.selectedSessionId);
   const activeTimeline = timeline ?? storeTrace?.timeline ?? { messages: [] };
   const activeRawMode = rawMode ?? storeRawMode;
   const messages = activeTimeline.messages;
+  const displayMessages =
+    messageOrder === "desc" ? [...messages].reverse() : messages;
 
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const [showTop, setShowTop] = useState(false);
@@ -29,6 +32,13 @@ export function ConversationView({ timeline, rawMode }: ConversationViewProps) {
   const scrollCache = useRef<Map<string, number>>(new Map());
   const prevSessionRef = useRef<string | null>(null);
   const scrollListenerAttached = useRef(false);
+
+  const distanceFromLatest = useCallback((el: HTMLDivElement) => {
+    if (messageOrder === "desc") {
+      return el.scrollTop;
+    }
+    return el.scrollHeight - el.scrollTop - el.clientHeight;
+  }, [messageOrder]);
 
   const updateButtons = useCallback(() => {
     const el = viewportRef.current;
@@ -61,46 +71,49 @@ export function ConversationView({ timeline, rawMode }: ConversationViewProps) {
     updateButtons();
     const el = viewportRef.current;
     if (!el) return;
-    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
-    if (distanceFromBottom <= SCROLL_THRESHOLD) {
+    if (distanceFromLatest(el) <= SCROLL_THRESHOLD) {
       setHasNew(false);
     }
-  }, [updateButtons]);
+  }, [distanceFromLatest, updateButtons]);
 
   // Save/restore scroll position on session switch
   useEffect(() => {
     const el = viewportRef.current;
     if (prevSessionRef.current && el) {
-      scrollCache.current.set(prevSessionRef.current, el.scrollTop);
+      scrollCache.current.set(
+        `${prevSessionRef.current}:${messageOrder}`,
+        el.scrollTop,
+      );
     }
     if (selectedSessionId && el) {
-      const saved = scrollCache.current.get(selectedSessionId);
+      const saved = scrollCache.current.get(`${selectedSessionId}:${messageOrder}`);
       requestAnimationFrame(() => {
-        el.scrollTo({ top: saved ?? 0 });
+        el.scrollTo({
+          top: saved ?? (messageOrder === "desc" ? 0 : 0),
+        });
         updateButtons();
       });
     }
     prevSessionRef.current = selectedSessionId ?? null;
-  }, [selectedSessionId, updateButtons]);
+  }, [messageOrder, selectedSessionId, updateButtons]);
 
   // Recalculate buttons when content changes
   useEffect(() => {
     requestAnimationFrame(updateButtons);
-  }, [messages.length, updateButtons]);
+  }, [displayMessages.length, messageOrder, updateButtons]);
 
   // Detect new messages while not at bottom
   useEffect(() => {
     if (messages.length > prevCountRef.current) {
       const el = viewportRef.current;
       if (el) {
-        const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
-        if (distanceFromBottom > SCROLL_THRESHOLD) {
+        if (distanceFromLatest(el) > SCROLL_THRESHOLD) {
           setHasNew(true);
         }
       }
     }
     prevCountRef.current = messages.length;
-  }, [messages.length]);
+  }, [distanceFromLatest, messages.length]);
 
   // Watch for element size changes (visibility, content loading, etc.)
   useEffect(() => {
@@ -113,21 +126,26 @@ export function ConversationView({ timeline, rawMode }: ConversationViewProps) {
     return () => resizeObserver.disconnect();
   }, [updateButtons]);
 
-  const scrollToTop = () => {
-    viewportRef.current?.scrollTo({ top: 0 });
-    requestAnimationFrame(updateButtons);
-  };
-
   const scrollToBottom = () => {
     const el = viewportRef.current;
     if (el) {
       el.scrollTo({ top: el.scrollHeight });
-      setHasNew(false);
+      if (messageOrder === "asc") {
+        setHasNew(false);
+      }
       requestAnimationFrame(updateButtons);
     }
   };
 
-  if (messages.length === 0) {
+  const scrollToTop = () => {
+    viewportRef.current?.scrollTo({ top: 0 });
+    if (messageOrder === "desc") {
+      setHasNew(false);
+    }
+    requestAnimationFrame(updateButtons);
+  };
+
+  if (displayMessages.length === 0) {
     return (
       <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
         No messages to display
@@ -139,7 +157,7 @@ export function ConversationView({ timeline, rawMode }: ConversationViewProps) {
     <div className="relative h-full">
       <div className="h-full overflow-auto" ref={setViewportRef}>
         <div className="space-y-3 p-6 max-w-4xl mx-auto">
-          {messages.map((msg, i) => (
+          {displayMessages.map((msg, i) => (
             <MessageBlock
               key={`msg-${i}`}
               message={msg}
@@ -154,10 +172,13 @@ export function ConversationView({ timeline, rawMode }: ConversationViewProps) {
         <div className="absolute bottom-3 right-4 z-10 flex flex-col gap-1">
           {showTop && (
             <button
-              className="flex items-center justify-center h-7 w-7 bg-card border border-border shadow-sm hover:bg-accent transition-colors rounded-sm"
+              className="relative flex items-center justify-center h-7 w-7 bg-card border border-border shadow-sm hover:bg-accent transition-colors rounded-sm"
               onClick={scrollToTop}
             >
               <ArrowUp className="h-3.5 w-3.5" />
+              {hasNew && messageOrder === "desc" && (
+                <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-accent-brand animate-pulse" />
+              )}
             </button>
           )}
           {showBottom && (
@@ -166,7 +187,7 @@ export function ConversationView({ timeline, rawMode }: ConversationViewProps) {
               onClick={scrollToBottom}
             >
               <ArrowDown className="h-3.5 w-3.5" />
-              {hasNew && (
+              {hasNew && messageOrder === "asc" && (
                 <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-accent-brand animate-pulse" />
               )}
             </button>
