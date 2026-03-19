@@ -18,6 +18,7 @@ export function getElectronAPI(): ElectronAPI {
     "listSessions",
     "getSessionTrace",
     "getExchangeDetail",
+    "getSessionDashboard",
     "clearHistory",
     "getUpdateState",
     "checkForUpdates",

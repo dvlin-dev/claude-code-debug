@@ -5,6 +5,7 @@ import type {
   ExchangeDetailVM,
   ProfileStatusChangedEvent,
   ProfilesChangedEvent,
+  SessionDashboardVM,
   SessionListFilter,
   SessionListItemVM,
   SessionTraceVM,
@@ -50,6 +51,9 @@ export const electronAPI: ElectronAPI = {
 
   getExchangeDetail: (exchangeId: string): Promise<ExchangeDetailVM | null> =>
     ipcRenderer.invoke(IPC.GET_EXCHANGE_DETAIL, exchangeId),
+
+  getSessionDashboard: (sessionId: string): Promise<SessionDashboardVM> =>
+    ipcRenderer.invoke(IPC.GET_SESSION_DASHBOARD, sessionId),
 
   clearHistory: (): Promise<void> => ipcRenderer.invoke(IPC.CLEAR_HISTORY),
 

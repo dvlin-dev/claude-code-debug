@@ -11,6 +11,7 @@ import { ConversationView } from "./conversation-view";
 import { SystemView } from "./system-view";
 import { ToolsView } from "./tools-view";
 import { OtherView } from "./other-view";
+import { DashboardView } from "./dashboard-view";
 import { InspectorPanel } from "./inspector-panel";
 import { useSessionStore } from "../stores/session-store";
 import { useTraceStore } from "../stores/trace-store";
@@ -141,6 +142,7 @@ export function MainContent() {
       <div className={cn("h-full", contentTab !== "system" && "hidden")}><SystemView /></div>
       <div className={cn("h-full", contentTab !== "tools" && "hidden")}><ToolsView /></div>
       <div className={cn("h-full", contentTab !== "other" && "hidden")}><OtherView /></div>
+      <div className={cn("h-full", contentTab !== "dashboard" && "hidden")}><DashboardView /></div>
     </>
   );
 

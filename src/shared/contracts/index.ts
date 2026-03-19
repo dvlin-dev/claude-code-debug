@@ -1,4 +1,5 @@
 export * from "./capture";
+export * from "./dashboard";
 export * from "./events";
 export * from "./inspector";
 export * from "./normalized";

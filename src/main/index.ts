@@ -137,6 +137,7 @@ app.whenReady().then(async () => {
     proxyManager: appBootstrap.proxyManager,
     sessionQueryService: appBootstrap.sessionQueryService,
     exchangeQueryService: appBootstrap.exchangeQueryService,
+    dashboardQueryService: appBootstrap.dashboardQueryService,
     exportData: (filePath) => appBootstrap!.exportData(filePath),
     importData: (filePath) => appBootstrap!.importData(filePath),
     clearHistory: () => {

@@ -10,6 +10,7 @@ import type {
 import type { UpdateService } from "../update/update-service";
 import type { ExchangeQueryService } from "../queries/exchange-query-service";
 import type { SessionQueryService } from "../queries/session-query-service";
+import type { DashboardQueryService } from "../queries/dashboard-query-service";
 import type { ProfileStore } from "../storage/profile-store";
 import type { ProxyManager } from "../transport/proxy-manager";
 
@@ -21,6 +22,7 @@ export interface IpcDependencies {
     "listSessions" | "getSessionTrace"
   >;
   exchangeQueryService: Pick<ExchangeQueryService, "getExchangeDetail">;
+  dashboardQueryService: Pick<DashboardQueryService, "getSessionDashboard">;
   exportData: (filePath: string) => AppDataTransferResult;
   importData: (filePath: string) => Promise<AppDataTransferResult>;
   clearHistory: () => void | Promise<void>;
@@ -223,6 +225,13 @@ export function registerIpcHandlers(deps: IpcDependencies): () => void {
       throw new Error("Invalid exchangeId");
     }
     return deps.exchangeQueryService.getExchangeDetail(exchangeId);
+  });
+
+  ipcMain.handle(IPC.GET_SESSION_DASHBOARD, (_event, sessionId: string) => {
+    if (typeof sessionId !== "string") {
+      throw new Error("Invalid sessionId");
+    }
+    return deps.dashboardQueryService.getSessionDashboard(sessionId);
   });
 
   ipcMain.handle(IPC.CLEAR_HISTORY, async () => {

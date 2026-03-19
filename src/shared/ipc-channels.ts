@@ -10,6 +10,7 @@ export const IPC = {
   LIST_SESSIONS: "app:list-sessions",
   GET_SESSION_TRACE: "trace:get-session",
   GET_EXCHANGE_DETAIL: "trace:get-exchange",
+  GET_SESSION_DASHBOARD: "trace:get-session-dashboard",
   CLEAR_HISTORY: "trace:clear-history",
   GET_UPDATE_STATE: "app:get-update-state",
   CHECK_FOR_UPDATES: "app:check-for-updates",

@@ -3,7 +3,7 @@ import type { ExchangeDetailVM, SessionTraceVM } from "../../../shared/contracts
 import { getElectronAPI } from "../lib/electron-api";
 import { useSessionStore } from "./session-store";
 
-export type ContentTab = "messages" | "system" | "tools" | "other";
+export type ContentTab = "messages" | "system" | "tools" | "other" | "dashboard";
 export type MessageOrder = "asc" | "desc";
 
 interface TraceState {

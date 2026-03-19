@@ -17,6 +17,7 @@ import { CapturePipeline } from "../pipeline/capture-pipeline";
 import { SessionResolver } from "../pipeline/session-resolver";
 import { ExchangeQueryService } from "../queries/exchange-query-service";
 import { SessionQueryService } from "../queries/session-query-service";
+import { DashboardQueryService } from "../queries/dashboard-query-service";
 import { ExchangeRepository } from "../storage/exchange-repository";
 import { AppDataService } from "../storage/app-data-service";
 import { HistoryMaintenanceService } from "../storage/history-maintenance-service";
@@ -42,6 +43,7 @@ export interface AppBootstrap {
   proxyManager: ProxyManager;
   sessionQueryService: SessionQueryService;
   exchangeQueryService: ExchangeQueryService;
+  dashboardQueryService: DashboardQueryService;
   exportData(filePath: string): AppDataTransferResult;
   importData(filePath: string): Promise<AppDataTransferResult>;
   getProfiles(): ConnectionProfile[];
@@ -148,6 +150,7 @@ export function createAppBootstrap(
     exchangeRepository,
     providerCatalog,
   );
+  const dashboardQueryService = new DashboardQueryService(exchangeRepository);
 
   function emitProfileStatuses(): void {
     deps.onProfileStatusChanged?.({
@@ -273,6 +276,7 @@ export function createAppBootstrap(
     proxyManager,
     sessionQueryService,
     exchangeQueryService,
+    dashboardQueryService,
     exportData(filePath) {
       return appDataService.exportToFile(filePath);
     },

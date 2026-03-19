@@ -3,6 +3,7 @@ import type {
   ExchangeDetailVM,
   ProfileStatusChangedEvent,
   ProfilesChangedEvent,
+  SessionDashboardVM,
   SessionListFilter,
   SessionListItemVM,
   SessionTraceVM,
@@ -26,6 +27,7 @@ export interface ElectronAPI {
   listSessions(filter?: SessionListFilter): Promise<SessionListItemVM[]>;
   getSessionTrace(sessionId: string): Promise<SessionTraceVM>;
   getExchangeDetail(exchangeId: string): Promise<ExchangeDetailVM | null>;
+  getSessionDashboard(sessionId: string): Promise<SessionDashboardVM>;
   clearHistory(): Promise<void>;
   getUpdateState(): Promise<UpdateState>;
   checkForUpdates(): Promise<UpdateState>;

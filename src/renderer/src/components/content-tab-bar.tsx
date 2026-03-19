@@ -8,6 +8,7 @@ const TABS: { id: ContentTab; label: string }[] = [
   { id: "system", label: "System" },
   { id: "tools", label: "Tools" },
   { id: "other", label: "Other" },
+  { id: "dashboard", label: "Dashboard" },
 ];
 
 export function ContentTabBar() {
